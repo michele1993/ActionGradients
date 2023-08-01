@@ -20,6 +20,20 @@ class Mot_model(nn.Module):
             self.apply(self.weight_init)
             self.optimiser = opt.SGD(self.parameters(), ln_rate, momentum=0)
 
+    def step(self,action):
+
+        return self.model(action)
+
+    def update(self, target, estimate):
+
+        loss = torch.sum((target-estimate)**2)
+        self.optimiser.zero_grad()
+        loss.backward()
+        self.optimiser.step()
+
+        return loss
+
+
 
     def F_weight_init(self, l):
 
@@ -35,26 +49,9 @@ class Mot_model(nn.Module):
             l.weight.data.fill_(self.fixed_params[0]) #self.fixed_params[0]
             l.bias.data.fill_(self.fixed_params[1]) #self.fixed_params[1]
 
-    def step(self,action):
-
-        return self.model(action)
-
-    def mirror_reversal(self):
-        # Reverse sign of slope (i.e. s.d. changes sign) rotating around bias (i.e kept fixed - since point at which a =0)
-        self.model.weight.data = self.model.weight * (-1)
-
-    def gradient_update(self, target, estimate):
-
-        loss = torch.sum((target-estimate)**2)
-        self.optimiser.zero_grad()
-        loss.backward()
-        self.optimiser.step()
-
-        return loss
-
 
     # This methods is for the model-based
-    def update(self, states,actions, n_states):
+    def analytic_update(self, states,actions, n_states):
 
         #n_states = len(states)
 

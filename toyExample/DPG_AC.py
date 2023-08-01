@@ -4,12 +4,12 @@ import torch.optim as opt
 
 class Actor(nn.Module):
 
-    def __init__(self,tot_a=1,input_s=1,out_put=1,ln_rate = 1e-3, trainable = True):
+    def __init__(self,tot_a=1,input_s=1,output_s=2,ln_rate = 1e-3, trainable = True):
 
         super().__init__()
 
         self.tot_a = tot_a
-        self.det_a = nn.Linear(input_s,out_put)
+        self.l1 = nn.Linear(input_s,output_s)
 
         #self.optimiser = opt.Adam(self.parameters(), ln_rate)
 
@@ -22,7 +22,9 @@ class Actor(nn.Module):
 
     def forward(self,y_star):
 
-        return self.det_a(y_star)
+        x = self.l1(y_star)
+
+        return x
 
 
     def update(self,loss):
@@ -38,20 +40,18 @@ class Actor(nn.Module):
         return grad.item()
 
 
+    def ActionGrad_update(self,gradient, action):
 
-    def MB_update(self,gradient, action):
+        action.backward(gradient=gradient)
 
-        #torch.autograd.backward(action, grad_tensors=gradient)
-        action.backward(gradient= gradient)
-
-        ## ---------- Compute grad ---------------
-        grad = self.det_a.bias.grad.detach().clone()
+        ## ---------- Compute grad (to return it) ---------------
+        grad = self.l1.bias.grad.detach().clone()
         ## --------------------------------------
  
         self.optimiser.step()
         self.optimiser.zero_grad()
 
-        return grad.item()
+        return grad
 
 
     def small_weight_init(self,l):
