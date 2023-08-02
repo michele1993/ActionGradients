@@ -11,6 +11,8 @@ class Actor(nn.Module):
         self.tot_a = tot_a
         self.l1 = nn.Linear(input_s,output_s)
 
+        #self.apply(self.small_weight_init)
+
         #self.optimiser = opt.Adam(self.parameters(), ln_rate)
 
         if trainable:
@@ -43,15 +45,8 @@ class Actor(nn.Module):
     def ActionGrad_update(self,gradient, action):
 
         action.backward(gradient=gradient)
-
-        ## ---------- Compute grad (to return it) ---------------
-        grad = self.l1.bias.grad.detach().clone()
-        ## --------------------------------------
- 
         self.optimiser.step()
         self.optimiser.zero_grad()
-
-        return grad
 
 
     def small_weight_init(self,l):
