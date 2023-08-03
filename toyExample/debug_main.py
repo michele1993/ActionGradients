@@ -8,37 +8,37 @@ import torch
 
 torch.manual_seed(0)
 
-episodes = 3000
-a_ln_rate = 0.01 # 0.05
+episodes = 1000
+a_ln_rate = 0.05 # 0.05
 model_ln_rate = 0.001
-t_print = 100
+t_print = 10
 pre_train = 0
-sensory_noise = 0.001
+sensory_noise = 0.001#0.05
 fixd_a_noise = 0.01
-beta = 0.2
+beta = 0
 
 
-y_star = torch.ones(1)
+y_star = torch.zeros(1)
 
 model = Mot_model()
 
-agent = Actor(output_s=2, ln_rate = a_ln_rate, trainable = True)
+agent = Actor(output_s=1, ln_rate = a_ln_rate, trainable = True)
 estimated_model = Mot_model(ln_rate=model_ln_rate,lamb=None, Fixed = False) 
 
 eps_rwd = []
 tot_accuracy = []
 
-for ep in range(0,episodes):
+for ep in range(1,episodes):
 
     # Compute mean of Gaussian policy
-    mu_a, log_std_a = agent(y_star) # Assume actor output log(std) so that can then transform it in positive value
-    std_a = torch.exp(log_std_a) #/ 500 # Need to initialise network to much smaller values
+    mu_a = agent(y_star) # Assume actor output log(std) so that can then transform it in positive value
+    #std_a = torch.exp(log_std_a)
     
     #Add fixd noise to exprl noise:
-    action_std = std_a /500 + fixd_a_noise 
+    action_std = fixd_a_noise
 
     # Sample Gaussian perturbation
-    a_noise = torch.randn(1) * action_std 
+    a_noise = torch.randn(1) * action_std
 
     # Compute action from sampled Gaussian policy
     action = mu_a + a_noise
@@ -63,14 +63,10 @@ for ep in range(0,episodes):
         dr_dy = torch.autograd.grad(rwd, y)[0]
         est_y = estimated_model.step(action)  # re-estimate values since model has been updated
         # NOTE: here I diff relative to det_a instead of action, should be the same (since sigma is fixed)
-        E_dr_dmu_a = torch.autograd.grad(est_y,mu_a,grad_outputs=dr_dy, retain_graph=True)[0] 
+        E_dr_dmu_a = torch.autograd.grad(est_y,mu_a,grad_outputs=dr_dy)[0] 
 
         #Error-based learning will try to converge to deterministic policy
-        std_loss = std_a**2
-        E_dr_dstd_a = torch.autograd.grad(std_loss, std_a, retain_graph=True)[0]
-
-        #Combine two grads relative to mu and std into one vector
-        E_grad = torch.stack([E_dr_dmu_a, E_dr_dstd_a])
+        E_grad = E_dr_dmu_a
         ## ============================================
 
         ## ===== Compute REINFORCE action gradient ========
@@ -78,20 +74,17 @@ for ep in range(0,episodes):
         # it is not required above since use torch.autograd, which by default doesn't require_grad
         with torch.no_grad():
             # Mean action grad 
-            R_dr_dmu_a = (-1/(2*action_std.detach()**2) * (action.detach() - mu_a)**2) * rwd.detach() 
-            #R_dr_dmu_a = (-1/(2*fixd_a_noise**2) * (action - mu_a)**2) * rwd 
-            # Std action grad
-            R_dr_dstd_a = (-1) * rwd.detach() * (action_std**2 - (action.detach() - mu_a.detach())**2) / action_std**3
-            #R_dr_dstd_a = torch.tensor([0,]) # DELETE!!!!
+            R_dr_dmu_a = (-1/(2*action_std**2) * (action.detach() - mu_a)**2) * rwd.detach() 
 
         #Combine two grads relative to mu and std into one vector
-        R_grad = torch.cat([R_dr_dmu_a, R_dr_dstd_a])
+        R_grad = R_dr_dmu_a
         ## =========================================
+
 
         # Combine the two gradients
         comb_action_grad = beta * E_grad + (1-beta) * R_grad
 
-        action_variables = torch.stack([mu_a, std_a])
+        action_variables = mu_a
 
         agent_grad = agent.ActionGrad_update(comb_action_grad, action_variables)
 
@@ -99,9 +92,8 @@ for ep in range(0,episodes):
 
     if ep % t_print == 0:
 
-        print_acc = sum(eps_rwd) / len(eps_rwd)
+        print_acc = sum(eps_rwd) / t_print
         eps_rwd = []
         print("ep: ",ep)
         print("accuracy: ",print_acc,"\n")
-        print("std_a: ", std_a,"\n")
         tot_accuracy.append(print_acc)

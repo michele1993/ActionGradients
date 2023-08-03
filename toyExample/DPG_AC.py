@@ -11,8 +11,8 @@ class Actor(nn.Module):
         self.tot_a = tot_a
         self.l1 = nn.Linear(input_s,output_s)
 
-        #self.apply(self.small_weight_init)
-
+        # Initialise network with small weights
+        self.apply(self.small_weight_init)
         #self.optimiser = opt.Adam(self.parameters(), ln_rate)
 
         if trainable:
@@ -53,7 +53,8 @@ class Actor(nn.Module):
 
         if isinstance(l,nn.Linear):
             nn.init.normal_(l.weight,mean=0,std= 0.1)# std= 0.00005
-            l.bias.data.fill_(0)
+            nn.init.normal_(l.bias,mean=0,std= 0.1)# std= 0.00005
+            #l.bias.data.fill_(0)
 
 class Critic(nn.Module):
 
