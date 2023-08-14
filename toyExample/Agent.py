@@ -9,14 +9,19 @@ class Actor(nn.Module):
         super().__init__()
 
         self.tot_a = tot_a
-        self.l1 = nn.Linear(input_s,output_s)
+        # Maintain two separate sets of weights for the mean and std of the Gaussian policy
+        # So can initialise them with two different scales
+        self.l1 = nn.Linear(input_s,output_s //2)
+        self.l2 = nn.Linear(input_s, output_s //2)
+
 
         # Initialise network with small weights
-        self.apply(self.small_weight_init)
-        #self.optimiser = opt.Adam(self.parameters(), ln_rate)
+        #nn.init.normal_(self.l2.weight, mean=0, std=0.01)  # Initialize with a small scale
+        #nn.init.normal_(self.l2.bias, mean=0, std=0.01)  # Initialize with a small scale
+        self.small_weight_init(self.l2)
 
         if trainable:
-            self.optimiser = opt.SGD(self.parameters(), ln_rate,momentum=0)
+            self.optimiser = opt.Adam(self.parameters(), ln_rate)
         else:
 
             for p in self.parameters():
@@ -24,10 +29,26 @@ class Actor(nn.Module):
 
     def forward(self,y_star):
 
-        x = self.l1(y_star)
+        x_1 = self.l1(y_star)
+        x_2 = self.l2(y_star)
+        return torch.cat([x_1,x_2])
+    
+    def computeAction(self, y_star, fixd_a_noise):
 
-        return x
+        # Compute mean and log(std) of Gaussian policy
+        mu_a, log_std_a = self(y_star) # Assume actor output log(std) so that can then transform it in positive value
 
+        #Compute std
+        std_a = torch.exp(log_std_a) # Need to initialise network to much smaller values
+        
+        #Add fixd noise to exprl noise:
+        action_std = std_a + fixd_a_noise 
+
+        # Sample Gaussian perturbation
+        a_noise = torch.randn(1) * action_std 
+
+        # Compute action from sampled Gaussian policy
+        return mu_a + a_noise, mu_a, action_std
 
     def update(self,loss):
 
@@ -44,6 +65,7 @@ class Actor(nn.Module):
 
     def ActionGrad_update(self,gradient, action):
 
+
         action.backward(gradient=gradient)
         self.optimiser.step()
         self.optimiser.zero_grad()
@@ -52,9 +74,10 @@ class Actor(nn.Module):
     def small_weight_init(self,l):
 
         if isinstance(l,nn.Linear):
-            nn.init.normal_(l.weight,mean=0,std= 0.1)# std= 0.00005
-            nn.init.normal_(l.bias,mean=0,std= 0.1)# std= 0.00005
-            #l.bias.data.fill_(0)
+            #nn.init.normal_(l.weight,mean=0,std= 0.1)# std= 0.00005
+            nn.init.normal_(l.bias,mean=0,std= 0.001)# std= 0.00005
+            l.bias.data.fill_(-2) # initialise to neg value so exp() return value < 1
+            #l.weight.data.fill_(0)
 
 class Critic(nn.Module):
 
@@ -67,7 +90,7 @@ class Critic(nn.Module):
         # Q has to be at least quadratic:
         #self.bias = nn.Parameter(torch.randn(1,))
         #self.linearP = nn.Parameter(torch.randn(1,))
-        self.quadraticP = nn.Parameter(torch.randn(1, ))
+        self.quadraticP = nn.Parameter(torch.randn(1, )**2) # Initialise to positive value
 
         self.optimiser = opt.Adam(self.parameters(), ln_rate)
 
@@ -83,11 +106,11 @@ class Critic(nn.Module):
             nn.init.normal_(l.weight, mean=0, std=0.5)  # std= 0.00005
             nn.init.normal_(l.bias,mean=0, std=0.5)  # std= 0.00005
 
-    def update(self, loss):
+    def update(self, delta_rwd):
 
-        loss = torch.sum(loss)
+        loss = torch.sum(delta_rwd**2)
         self.optimiser.zero_grad()
-        loss.backward()
+        loss.backward(retain_graph=True) # Need this, since delta_rwd then used to update actor
         self.optimiser.step()
 
         return loss

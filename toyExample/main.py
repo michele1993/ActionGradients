@@ -1,47 +1,50 @@
 import sys
 sys.path.append('/Users/px19783/code_repository/cerebellum_project/ActionGradients')
 from Motor_model  import Mot_model
-from DPG_AC import *
+from Agent import *
 import torch
+from CombinedAG import CombActionGradient
 
  
 
 torch.manual_seed(0)
 
-episodes = 3000
-a_ln_rate = 0.01 # 0.05
-model_ln_rate = 0.001
+episodes = 2000
+a_ln_rate = 0.1
+c_ln_rate = 0.1
+model_ln_rate = 0.01
 t_print = 100
-pre_train = 0
+pre_train = 200
 sensory_noise = 0.001
 fixd_a_noise = 0.01
-beta = 0.2
+beta = 0
+
+reinf_std_w = 1
+MBDPG_std_w = 1
+
 
 
 y_star = torch.ones(1)
 
 model = Mot_model()
 
-agent = Actor(output_s=2, ln_rate = a_ln_rate, trainable = True)
+actor = Actor(output_s=2, ln_rate = a_ln_rate, trainable = True)
+critic = Critic(ln_rate=c_ln_rate) # Initialise quadratic critic
 estimated_model = Mot_model(ln_rate=model_ln_rate,lamb=None, Fixed = False) 
 
-eps_rwd = []
+CAG = CombActionGradient(actor, reinf_std_w, MBDPG_std_w, beta)
+
+ep_rwd = []
 tot_accuracy = []
+ep_critic_loss = []
+
+mean_rwd = 0
+critic_loss = 0
 
 for ep in range(0,episodes):
 
-    # Compute mean of Gaussian policy
-    mu_a, log_std_a = agent(y_star) # Assume actor output log(std) so that can then transform it in positive value
-    std_a = torch.exp(log_std_a) #/ 500 # Need to initialise network to much smaller values
-    
-    #Add fixd noise to exprl noise:
-    action_std = std_a /500 + fixd_a_noise 
-
-    # Sample Gaussian perturbation
-    a_noise = torch.randn(1) * action_std 
-
-    # Compute action from sampled Gaussian policy
-    action = mu_a + a_noise
+    # Sample action from Gaussian policy
+    action, mu_a, std_a = actor.computeAction(y_star, fixd_a_noise)
 
     # Perform action in the env
     true_y = model.step(action.detach())
@@ -49,59 +52,43 @@ for ep in range(0,episodes):
     # Add noise to sensory obs
     y = true_y + torch.randn_like(true_y) * sensory_noise
 
+    # Compute differentiable rwd signal
+    y.requires_grad_(True)
+    rwd = (y - y_star)**2 # it is actually a punishment
+    
+    ## ====== Use running average to compute RPE =======
+    delta_rwd = rwd - mean_rwd
+    mean_rwd += c_ln_rate * delta_rwd.detach()
+    ## ==============================================
+
+    ## ====== Use critic to compute RPE =======
+    #pred_rwd = critic(action)
+    #delta_rwd = rwd - pred_rwd
+    # Update critic
+    #critic_loss = critic.update(delta_rwd)
+    ## ==============================================
+
+
     # Update the model
     est_y = estimated_model.step(action.detach())
     model_loss = estimated_model.update(y, est_y)
 
-    # Compute differentiable rwd signal
-    y.requires_grad_(True)
-    rwd = (y - y_star)**2
-
+    # Update actor based on combined action gradient
     if ep > pre_train:
-
-        ## ===== Compute MBDPG action gradient =========
-        dr_dy = torch.autograd.grad(rwd, y)[0]
         est_y = estimated_model.step(action)  # re-estimate values since model has been updated
-        # NOTE: here I diff relative to det_a instead of action, should be the same (since sigma is fixed)
-        E_dr_dmu_a = torch.autograd.grad(est_y,mu_a,grad_outputs=dr_dy, retain_graph=True)[0] 
+        CAG.update(y, est_y, action, mu_a, std_a, delta_rwd)
 
-        #Error-based learning will try to converge to deterministic policy
-        std_loss = std_a**2
-        E_dr_dstd_a = torch.autograd.grad(std_loss, std_a, retain_graph=True)[0]
-
-        #Combine two grads relative to mu and std into one vector
-        E_grad = torch.stack([E_dr_dmu_a, E_dr_dstd_a])
-        ## ============================================
-
-        ## ===== Compute REINFORCE action gradient ========
-        # Note: Here we are computing the gradients explicitly, so need to specify torch.no_grad()
-        # it is not required above since use torch.autograd, which by default doesn't require_grad
-        with torch.no_grad():
-            # Mean action grad 
-            R_dr_dmu_a = (-1/(2*action_std.detach()**2) * (action.detach() - mu_a)**2) * rwd.detach() 
-            #R_dr_dmu_a = (-1/(2*fixd_a_noise**2) * (action - mu_a)**2) * rwd 
-            # Std action grad
-            R_dr_dstd_a = (-1) * rwd.detach() * (action_std**2 - (action.detach() - mu_a.detach())**2) / action_std**3
-            #R_dr_dstd_a = torch.tensor([0,]) # DELETE!!!!
-
-        #Combine two grads relative to mu and std into one vector
-        R_grad = torch.cat([R_dr_dmu_a, R_dr_dstd_a])
-        ## =========================================
-
-        # Combine the two gradients
-        comb_action_grad = beta * E_grad + (1-beta) * R_grad
-
-        action_variables = torch.stack([mu_a, std_a])
-
-        agent_grad = agent.ActionGrad_update(comb_action_grad, action_variables)
-
-    eps_rwd.append(torch.sqrt(rwd))
+    ep_rwd.append(torch.sqrt(rwd))
+    ep_critic_loss.append(critic_loss)
 
     if ep % t_print == 0:
 
-        print_acc = sum(eps_rwd) / len(eps_rwd)
-        eps_rwd = []
+        print_acc = sum(ep_rwd) / len(ep_rwd)
+        print_critic_loss = sum(ep_critic_loss) / len(ep_critic_loss)
+        ep_rwd = []
+        ep_critic_loss = []
         print("ep: ",ep)
-        print("accuracy: ",print_acc,"\n")
+        print("accuracy: ",print_acc)
+        print("critic loss: ", print_critic_loss)
         print("std_a: ", std_a,"\n")
         tot_accuracy.append(print_acc)
