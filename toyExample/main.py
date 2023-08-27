@@ -3,6 +3,7 @@ sys.path.append('/Users/px19783/code_repository/cerebellum_project/ActionGradien
 from Motor_model  import Mot_model
 from Agent import *
 import torch
+import numpy as np
 from CombinedAG import CombActionGradient
 
  
@@ -15,13 +16,10 @@ c_ln_rate = 0.1
 model_ln_rate = 0.01
 t_print = 100
 pre_train = 200
-sensory_noise = 0.001
-fixd_a_noise = 0.01
-beta = 0
-
-reinf_std_w = 1
-MBDPG_std_w = 1
-
+sensory_noise = 0.0001
+fixd_a_noise = 0.0001
+beta_mu = 0
+beta_std = 0
 
 
 y_star = torch.ones(1)
@@ -32,11 +30,14 @@ actor = Actor(output_s=2, ln_rate = a_ln_rate, trainable = True)
 critic = Critic(ln_rate=c_ln_rate) # Initialise quadratic critic
 estimated_model = Mot_model(ln_rate=model_ln_rate,lamb=None, Fixed = False) 
 
-CAG = CombActionGradient(actor, reinf_std_w, MBDPG_std_w, beta)
+CAG = CombActionGradient(actor, beta_mu, beta_std)
 
 ep_rwd = []
-tot_accuracy = []
+ep_actions = []
 ep_critic_loss = []
+
+tot_accuracy = []
+tot_actions = []
 
 mean_rwd = 0
 critic_loss = 0
@@ -45,6 +46,7 @@ for ep in range(0,episodes):
 
     # Sample action from Gaussian policy
     action, mu_a, std_a = actor.computeAction(y_star, fixd_a_noise)
+    ep_actions.append(action.detach().numpy())
 
     # Perform action in the env
     true_y = model.step(action.detach())
@@ -84,11 +86,16 @@ for ep in range(0,episodes):
     if ep % t_print == 0:
 
         print_acc = sum(ep_rwd) / len(ep_rwd)
+        action_var = np.var(ep_actions)
         print_critic_loss = sum(ep_critic_loss) / len(ep_critic_loss)
         ep_rwd = []
+        ep_actions = []
         ep_critic_loss = []
-        print("ep: ",ep)
-        print("accuracy: ",print_acc)
-        print("critic loss: ", print_critic_loss)
-        print("std_a: ", std_a,"\n")
+        #print("ep: ",ep)
+        #print("accuracy: ",print_acc)
+        #print("critic loss: ", print_critic_loss)
+        #print("std_a: ", std_a,"\n")
         tot_accuracy.append(print_acc)
+        tot_actions.append(action_var)
+
+print("Tot variance: ",np.mean(tot_actions))
