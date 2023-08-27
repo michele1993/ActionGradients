@@ -16,8 +16,8 @@ c_ln_rate = 0.1
 model_ln_rate = 0.01
 t_print = 100
 pre_train = 200
-sensory_noise = 0.0001
-fixd_a_noise = 0.0001
+sensory_noise = 0.001
+fixd_a_noise = 0.03
 beta_mu = 0
 beta_std = 0
 
@@ -91,10 +91,10 @@ for ep in range(0,episodes):
         ep_rwd = []
         ep_actions = []
         ep_critic_loss = []
-        #print("ep: ",ep)
-        #print("accuracy: ",print_acc)
-        #print("critic loss: ", print_critic_loss)
-        #print("std_a: ", std_a,"\n")
+        print("ep: ",ep)
+        print("accuracy: ",print_acc)
+        print("critic loss: ", print_critic_loss)
+        print("std_a: ", std_a,"\n")
         tot_accuracy.append(print_acc)
         tot_actions.append(action_var)
 
