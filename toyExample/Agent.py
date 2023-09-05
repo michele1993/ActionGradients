@@ -74,10 +74,10 @@ class Actor(nn.Module):
     def small_weight_init(self,l):
 
         if isinstance(l,nn.Linear):
-            #nn.init.normal_(l.weight,mean=0,std= 0.1)# std= 0.00005
-            nn.init.normal_(l.bias,mean=0,std= 0.001)# std= 0.00005
-            l.bias.data.fill_(-2) # initialise to neg value so exp() return value < 1
-            #l.weight.data.fill_(0)
+            #nn.init.normal_(l.weight,mean=0,std= 0.001)# std= 0.00005
+            #l.bias.data.fill_(-2.5) # initialise to neg value so exp() return value < 1
+            l.bias.data.fill_(-1) # initialise to neg value so exp() return value < 1
+            l.weight.data.fill_(-1) # initialise to neg value so exp() return value < 1
 
 class Critic(nn.Module):
 

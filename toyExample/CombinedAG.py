@@ -32,7 +32,8 @@ class CombActionGradient:
             # Mean action grad 
             R_dr_dmu_a = (1/(std_a**2)) * (action - mu_a) * delta_rwd
             # Std action grad
-            R_dr_dstd_a = (-1) * (delta_rwd * (std_a**2 - (action - mu_a)**2) / std_a**3)
+            #R_dr_dstd_a = (delta_rwd * ((action - mu_a)**2 - std_a**2) / std_a**3)
+            R_dr_dstd_a = 15*(delta_rwd * (action - mu_a)**2)
 
         #Combine two grads relative to mu and std into one vector
         R_grad = torch.cat([R_dr_dmu_a, R_dr_dstd_a])
@@ -47,12 +48,13 @@ class CombActionGradient:
         # NOTE: here I diff relative to det_a instead of action, should be the same (since sigma is fixed)
         E_dr_dmu_a = torch.autograd.grad(est_y,mu_a,grad_outputs=dr_dy, retain_graph=True)[0] 
 
+        ## NOTE: During error-based learning variance seems fixed!!! so not plausible the variance reduction
         #Error-based learning will try to converge to deterministic policy
-        #std_loss = std_a**2
-        #E_dr_dstd_a = self.MBDPG_std_w * torch.autograd.grad(std_loss, std_a, retain_graph=True)[0]
+        std_loss = std_a**2
+        E_dr_dstd_a =  torch.autograd.grad(std_loss, std_a, retain_graph=True)[0]
 
         # TRIAL: Error-based learning not controlling std
-        E_dr_dstd_a = torch.ones_like(E_dr_dmu_a)
+        #E_dr_dstd_a = torch.zeros_like(E_dr_dmu_a)
 
         #Combine two grads relative to mu and std into one vector
         E_grad = torch.stack([E_dr_dmu_a, E_dr_dstd_a])
