@@ -22,6 +22,7 @@ class Actor(nn.Module):
 
         if trainable:
             self.optimiser = opt.Adam(self.parameters(), ln_rate)
+            #self.optimiser = opt.SGD(self.parameters(), ln_rate, momentum=0.9)
         else:
 
             for p in self.parameters():
@@ -55,18 +56,14 @@ class Actor(nn.Module):
         loss = torch.sum(loss)
         self.optimiser.zero_grad()
         loss.backward()
-        ## ---------- Compute grad ---------------
-        grad = self.det_a.bias.grad.detach().clone()
-        ## --------------------------------------
         self.optimiser.step()
-
-        return grad.item()
 
 
     def ActionGrad_update(self,gradient, action):
 
-
         action.backward(gradient=gradient)
+        #print("\n","Actor weight grad: ", self.l2.weight.grad)
+        #print(,"Actor bias grad: ",self.l2.bias.grad)
         self.optimiser.step()
         self.optimiser.zero_grad()
 
