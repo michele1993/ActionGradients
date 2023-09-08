@@ -6,12 +6,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from CombinedAG import CombActionGradient
 
- 
-
 torch.manual_seed(0)
 
 trials = 3000
-t_print =100
+t_print = 100
 save_file = False
 ## Set trials to match Izawa and Shadmer, 2011 experimental set-up, where they add 1 degree pertubation every 40 trials up to 8 degreese
 
@@ -42,7 +40,7 @@ CAG = CombActionGradient(actor, beta_mu, beta_std, rbl_std_weight, ebl_std_weigh
 
 tot_accuracy = []
 mean_rwd = 0
-trial_acc =[]
+trial_acc = []
 for ep in range(1,trials+1):
 
     # Sample action from Gaussian policy

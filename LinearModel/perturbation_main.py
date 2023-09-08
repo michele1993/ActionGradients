@@ -6,9 +6,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from CombinedAG import CombActionGradient
 
- 
-
-
 """ Load a pre-trained model and test under perturbation matching Izawa and Shadmer, 2011 experimental set-up, where they add 1 degree pertubation every 40 trials up to 8 degreese """
 
 torch.manual_seed(0)
@@ -27,16 +24,16 @@ y_star = torch.tensor([target],dtype=torch.float32)
 
 # Set noise variables
 sensory_noise = 0.01
-fixd_a_noise = 0.02 # set to experimental data value
+fixd_a_noise = 0.025 # set to experimental data value
 
 # Set update variables
-a_ln_rate = 0.07
+a_ln_rate = 0.1#0.0001
 c_ln_rate = 0.05
 model_ln_rate = 0.01
-beta_mu = 0
+beta_mu = 1
 beta_std = beta_mu
-rbl_std_weight = 3
-ebl_std_weight = 0.01
+rbl_std_weight = [0.01, 0.001]
+ebl_std_weight = [1, 100]
 
 
 

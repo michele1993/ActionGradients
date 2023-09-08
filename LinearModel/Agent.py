@@ -21,8 +21,8 @@ class Actor(nn.Module):
         self.small_weight_init(self.l2)
 
         if trainable:
-            self.optimiser = opt.Adam(self.parameters(), ln_rate)
-            #self.optimiser = opt.SGD(self.parameters(), ln_rate, momentum=0.9)
+            #self.optimiser = opt.Adam(self.parameters(), ln_rate)
+            self.optimiser = opt.SGD(self.parameters(), ln_rate)#, momentum=0.9)
         else:
 
             for p in self.parameters():

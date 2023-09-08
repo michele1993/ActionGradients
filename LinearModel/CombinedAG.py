@@ -10,8 +10,8 @@ class CombActionGradient:
         self.beta_mu = beta_mu
         self.beta_std = beta_std
 
-        self.rbl_std_weight = rbl_std_weight
-        self.ebl_std_weight = ebl_std_weight
+        self.rbl_std_weight = torch.tensor(rbl_std_weight)
+        self.ebl_std_weight = torch.tensor(ebl_std_weight)
 
         self.beta = torch.tensor([beta_mu, beta_std])
     
@@ -21,7 +21,7 @@ class CombActionGradient:
         R_grad = self.computeRBLGrad(action, mu_a, std_a, delta_rwd)
         E_grad = self.computeEBLGrad(y, est_y, action, mu_a, std_a, delta_rwd)
 
-        comb_action_grad = self.beta * E_grad + (1-self.beta) * R_grad # Combine the two gradients
+        comb_action_grad = self.beta * (self.ebl_std_weight * E_grad) + (1-self.beta) * (self.rbl_std_weight*R_grad) # Combine the two gradients
 
         action_variables = torch.stack([mu_a, std_a])
         agent_grad = self.actor.ActionGrad_update(comb_action_grad, action_variables)
@@ -36,7 +36,7 @@ class CombActionGradient:
             R_dr_dmu_a = (1/(std_a**2)) * (action - mu_a) * delta_rwd
             # Std action grad
             #R_dr_dstd_a = (delta_rwd * ((action - mu_a)**2 - std_a**2) / std_a**3)
-            R_dr_dstd_a = self.rbl_std_weight * (delta_rwd * (action - mu_a)**2)
+            R_dr_dstd_a = (delta_rwd * (action - mu_a)**2)
 
         #Combine two grads relative to mu and std into one vector
         R_grad = torch.cat([R_dr_dmu_a, R_dr_dstd_a])
@@ -54,7 +54,8 @@ class CombActionGradient:
         ## NOTE: During error-based learning variance seems fixed!!! so not plausible the variance reduction
         #Error-based learning will try to converge to deterministic policy
         std_loss = std_a**2
-        E_dr_dstd_a =  self.ebl_std_weight * torch.autograd.grad(std_loss, std_a, retain_graph=True)[0]
+        #E_dr_dstd_a =  self.ebl_std_weight * torch.autograd.grad(std_loss, std_a, retain_graph=True)[0]
+        E_dr_dstd_a =  torch.autograd.grad(std_loss, std_a, retain_graph=True)[0]
 
         # TRIAL: Error-based learning not controlling std
         #E_dr_dstd_a = torch.zeros_like(E_dr_dmu_a)
