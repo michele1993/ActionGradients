@@ -4,7 +4,7 @@ import torch.optim as opt
 
 class Actor(nn.Module):
 
-    def __init__(self,tot_a=1,input_s=1,output_s=2,ln_rate = 1e-3, trainable = True):
+    def __init__(self,tot_a=1,input_s=1,output_s=2,ln_rate = 1e-3, trainable = True, opt_type='Adam'):
 
         super().__init__()
 
@@ -18,11 +18,13 @@ class Actor(nn.Module):
         # Initialise network with small weights
         #nn.init.normal_(self.l2.weight, mean=0, std=0.01)  # Initialize with a small scale
         #nn.init.normal_(self.l2.bias, mean=0, std=0.01)  # Initialize with a small scale
-        self.small_weight_init(self.l2)
+        self.small_weight_init(self.l2) # Init std to neg value to get value below 1 when taking exp()
 
         if trainable:
-            #self.optimiser = opt.Adam(self.parameters(), ln_rate)
-            self.optimiser = opt.SGD(self.parameters(), ln_rate)#, momentum=0.9)
+            if opt_type=="SGD":
+                self.optimiser = opt.SGD(self.parameters(), ln_rate)#, momentum=0.9)
+            else:
+                self.optimiser = opt.Adam(self.parameters(), ln_rate)
         else:
 
             for p in self.parameters():

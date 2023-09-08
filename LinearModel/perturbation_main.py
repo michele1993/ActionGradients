@@ -27,10 +27,10 @@ sensory_noise = 0.01
 fixd_a_noise = 0.025 # set to experimental data value
 
 # Set update variables
-a_ln_rate = 0.1#0.0001
+a_ln_rate = 0.1
 c_ln_rate = 0.05
 model_ln_rate = 0.01
-beta_mu = 1
+beta_mu = 0
 beta_std = beta_mu
 rbl_std_weight = [0.01, 0.001]
 ebl_std_weight = [1, 100]
@@ -42,7 +42,7 @@ file_dir = os.path.dirname(os.path.abspath(__file__))
 file_dir = os.path.join(file_dir,'results/model/Mixed_model.pt') # For the mixed model
 models = torch.load(file_dir)
 
-actor = Actor(output_s=2, ln_rate = a_ln_rate, trainable = True)
+actor = Actor(output_s=2, ln_rate = a_ln_rate, trainable = True, opt_type='SGD')
 actor.load_state_dict(models['Actor'])
 estimated_model = Mot_model(ln_rate=model_ln_rate,lamb=None, Fixed = False)
 estimated_model.load_state_dict(models['Est_model'])
