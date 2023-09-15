@@ -41,8 +41,9 @@ mpl.rcParams['ytick.labelsize'] = font_s
 
 fig, axs = plt.subplots(nrows=1, ncols=3, figsize=(7.5,3),
  gridspec_kw={'wspace': 0.32, 'hspace': 0.3, 'left': 0.1, 'right': 0.95, 'bottom': 0.15,
-                                               'top': 0.95})
+                                               'top': 0.9})
 
+conditions = ['ERR','EPE', 'RWD']
 i=0
 t = np.arange(1,results.shape[-1]+1)
 for d in results:
@@ -50,7 +51,7 @@ for d in results:
     # plot required adaptation
     axs[i].plot(t,optimal_adaptation,c='yellow',linewidth=1)
     axs[i].set_ylim([-10, 20])
-    #axs[i].set_title(labels[i],fontsize=font_s)
+    axs[i].set_title(conditions[i],fontsize=font_s)
     axs[i].spines['right'].set_visible(False)
     axs[i].spines['top'].set_visible(False)
     axs[i].set_xlabel('Trials')
@@ -70,7 +71,6 @@ EBL_outcome_variability = np.std(results[0,-fixed_trials:])
 Mixed_outcome_variability = np.std(results[1,-fixed_trials:])
 RBL_outcome_variability = np.std(results[2,-fixed_trials:])
 outcome_variabilities = [EBL_outcome_variability, Mixed_outcome_variability, RBL_outcome_variability]
-conditions = ['ERR','EPE', 'RWD']
 for d in results:
     ax2.bar(conditions,outcome_variabilities,align='center', alpha=0.5,ecolor='black', capsize=5, color='tab:gray',edgecolor='k')
     ax2.set_ylim([0, 4])
@@ -79,6 +79,6 @@ for d in results:
     ax2.spines['top'].set_visible(False)
     ax2.set_ylabel('Reach Variability [deg]')
 
-plt.show()
+#plt.show()
 ## SAVE: 2nd figure
 #plt.savefig('/Users/px19783/Desktop/ActionGrad_1st_experiment_variability', format='png', dpi=1200)

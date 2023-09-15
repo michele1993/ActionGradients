@@ -10,7 +10,7 @@ torch.manual_seed(0)
 
 trials = 2500
 t_print = 100
-save_file = True
+save_file = False
 ## Set trials to match Izawa and Shadmer, 2011 experimental set-up, where they add 1 degree pertubation every 40 trials up to 8 degreese
 
 # Set noise variables
