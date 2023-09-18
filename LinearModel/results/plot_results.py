@@ -33,6 +33,7 @@ for l in labels:
     results.append(np.load(os.path.join(file_dir,l+'_outcome_variability.npy')))
 
 results = np.array(results).squeeze() / 0.0176 # convert to degrees
+
 font_s =7
 mpl.rc('font', size=font_s)
 plt.rcParams["font.family"] = "helvetica"
@@ -60,7 +61,7 @@ for d in results:
     i+=1
 
 ## SAVE: 1st figure
-#plt.savefig('/Users/px19783/Desktop/ActionGrad_1st_experiment_accuracy', format='png', dpi=1200)
+plt.savefig('/Users/px19783/Desktop/ActionGrad_1st_experiment_accuracy', format='png', dpi=1200)
 
 # Subplot
 fig, ax2 = plt.subplots(nrows=1, ncols=1, figsize=(2.5,3.5),

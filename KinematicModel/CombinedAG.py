@@ -47,18 +47,16 @@ class CombActionGradient:
         """Compute error-based learning (MBDPG) action gradient 
         NOTE: torch.with_nograd not required here since autograd.grad does not compute grad by default 
         """ 
-        dr_dy = torch.autograd.grad(delta_rwd, y)[0]
-        # NOTE: here I diff relative to det_a instead of action, should be the same (since sigma is fixed)
-        E_dr_dmu_a = torch.autograd.grad(est_y,mu_a,grad_outputs=dr_dy, retain_graph=True)[0] 
+        dr_dy = torch.autograd.grad(torch.mean(delta_rwd), y)[0]
+        
+        # Compute grad relatice to mean of Gaussian policy
+        #E_dr_dmu_a = torch.autograd.grad(est_y,mu_a,grad_outputs=dr_dy, retain_graph=True)[0] 
+        E_dr_dmu_a = torch.autograd.grad(est_y,action,grad_outputs=dr_dy, retain_graph=True)[0] 
+        print(E_dr_dmu_a)
+        exit()
 
-        ## NOTE: During error-based learning variance seems fixed!!! so not plausible the variance reduction
-        #Error-based learning will try to converge to deterministic policy
-        std_loss = std_a**2
-        #E_dr_dstd_a =  self.ebl_std_weight * torch.autograd.grad(std_loss, std_a, retain_graph=True)[0]
-        E_dr_dstd_a =  torch.autograd.grad(std_loss, std_a, retain_graph=True)[0]
-
-        # TRIAL: Error-based learning not controlling std
-        #E_dr_dstd_a = torch.zeros_like(E_dr_dmu_a)
+        # Compute grad relatice to std of Gaussian policy
+        E_dr_dstd_a = torch.autograd.grad(est_y,std_a,grad_outputs=dr_dy, retain_graph=True)[0] 
 
         #Combine two grads relative to mu and std into one vector
         E_grad = torch.stack([E_dr_dmu_a, E_dr_dstd_a])

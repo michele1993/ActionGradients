@@ -16,6 +16,6 @@ class Kinematic_model():
 
     def step(self,action):
         """ Compute xy coordinates based on shoulder and elbow angle """
-        x = self.l1 * torch.cos(action[0]) + self.l2 * torch.cos(action[0] + action[1])
-        y = self.l1 * torch.sin(action[0]) + self.l2 * torch.sin(action[0] + action[1])
+        x = self.l1 * torch.cos(action[...,0:1]) + self.l2 * torch.cos(action[...,0:1] + action[...,1:2])
+        y = self.l1 * torch.sin(action[...,0:1]) + self.l2 * torch.sin(action[...,0:1] + action[...,1:2])
         return x,y

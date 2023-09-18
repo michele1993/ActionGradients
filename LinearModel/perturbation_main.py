@@ -9,7 +9,7 @@ from CombinedAG import CombActionGradient
 """ Load a pre-trained model and test under perturbation matching Izawa and Shadmer, 2011 experimental set-up, where they add 1 degree pertubation every 40 trials up to 8 degreese """
 
 torch.manual_seed(0)
-save_file = True
+save_file = False
 
 # Experimental set-up based on Izawa and Shadmer, 2011
 trials_x_perturbation = 40
@@ -31,10 +31,10 @@ fixd_a_noise = 0.025 # set to experimental data value
 a_ln_rate = 0.1
 c_ln_rate = 0.05
 model_ln_rate = 0.01
-beta_mu = 0.25 # To reproduce Izawa and Shadmer, 2011 results, use beta_mu = 0.25 for combined grads 
+beta_mu = 1 # To reproduce Izawa and Shadmer, 2011 results, use beta_mu = 0.25 for combined grads 
 beta_std = beta_mu
 rbl_std_weight = [0.01, 0.01]
-ebl_std_weight = [1, 50]
+ebl_std_weight = [1, 75]
 
 
 
@@ -131,6 +131,6 @@ if save_file:
     np.save(outcome_dir, tot_outcomes)
 
 ## Plot actions:
-#t = np.arange(1,len(tot_outcomes)+1)
-#plt.plot(t,tot_outcomes)
-#plt.show()
+t = np.arange(1,len(tot_outcomes)+1)
+plt.plot(t,tot_outcomes)
+plt.show()

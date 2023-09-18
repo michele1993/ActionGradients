@@ -5,12 +5,14 @@ import torch.optim as opt
 
 class ForwardModel(nn.Module):
 
-    def __init__(self,ln_rate = 1e-3, action_s =2, output_s=2, h_state=56):
+    def __init__(self,state_s, action_s, max_coord, ln_rate = 1e-3, h_state=56):
 
         super().__init__()
 
-        self.l1 = nn.Linear(action_s,h_state)
-        self.l2 = nn.Linear(h_state,output_s)
+        self.max_coord = max_coord
+
+        self.l1 = nn.Linear(state_s+action_s,h_state)
+        self.l2 = nn.Linear(h_state,state_s)
 
         self.optimiser = opt.Adam(self.parameters(), ln_rate)
 
@@ -18,13 +20,14 @@ class ForwardModel(nn.Module):
 
         x = self.l1(action)
         x = torch.relu(x)
-        x,y = self.l2(x) 
+        x = self.l2(x) 
+        x = torch.tanh(x) * self.max_coord
+        return x
 
-        return x,y
+    def update(self, x_coord,y_coord, est_coord):
 
-    def update(self, target, estimate):
-
-        loss = torch.sum((target-estimate)**2)
+        est_x_coord, est_y_coord = est_coord[:,0:1], est_coord[:,1:2]
+        loss = torch.mean((est_y_coord-y_coord)**2 + (est_x_coord-x_coord)**2)
         self.optimiser.zero_grad()
         loss.backward()
         self.optimiser.step()
