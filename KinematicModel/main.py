@@ -30,10 +30,11 @@ fixd_a_noise = 0.02 # set to experimental data value
 a_ln_rate = 0.01
 c_ln_rate = 0.1
 model_ln_rate = 0.001
-beta_mu = 0.5
-beta_std = beta_mu
-rbl_std_weight =  1.5
-ebl_std_weight = 0.1
+beta = 0.5
+rbl_weight =  1.5
+ebl_weight = 0.1
+
+assert beta >= 0 and beta <= 1, "beta must be between 0 and 1 (inclusive)"
 
 # Initialise env
 model = Kinematic_model()
@@ -71,8 +72,8 @@ for r in radiuses:
     x_targ.append((cos_targ_xs * r)+x_0)
     y_targ.append((sin_targ_ys * r)+y_0)
 
-x_targ = torch.tensor(np.array(x_targ))
-y_targ = torch.tensor(np.array(y_targ))
+x_targ = torch.tensor(np.array(x_targ)).T # shape:[batch, n_steps]
+y_targ = torch.tensor(np.array(y_targ)).T # shape:[batch, n_steps]
 
 
 
@@ -86,7 +87,7 @@ y_targ = torch.tensor(np.array(y_targ))
 estimated_model = ForwardModel(state_s=state_s,action_s=action_s, max_coord=max_coord, ln_rate=model_ln_rate)
 actor = Actor(input_s= n_target_lines, batch_size=n_target_lines, ln_rate = a_ln_rate, learn_std=True)
 
-CAG = CombActionGradient(actor, beta_mu, beta_std, rbl_std_weight, ebl_std_weight)
+CAG = CombActionGradient(actor, rbl_weight, ebl_weight)
 
 
 tot_accuracy = []
@@ -102,7 +103,8 @@ for ep in range(1,n_episodes+1):
     current_x = torch.tensor([x_0]).repeat(n_target_lines,1)
     current_y = torch.tensor([y_0]).repeat(n_target_lines,1)
 
-
+    gradients = []
+    action_variables []
     for t in range(n_steps):
         # Sample action from Gaussian policy
         action, mu_a, std_a = actor.computeAction(cue, fixd_a_noise)
@@ -117,7 +119,7 @@ for ep in range(1,n_episodes+1):
         # Compute differentiable rwd signal
         coord = torch.cat([x_coord,y_coord], dim=1).requires_grad_(True)
 
-        rwd = torch.sqrt((coord[:,0:1] - x_targ[t:t+1])**2 + (coord[:,1:2] - y_targ[t:t+1])**2) # it is actually a punishment
+        rwd = torch.sqrt((coord[:,0:1] - x_targ[:,t:t+1])**2 + (coord[:,1:2] - y_targ[:,t:t+1])**2) # it is actually a punishment
 
         trial_acc.append(torch.mean(rwd.detach()).item())
         
@@ -134,13 +136,17 @@ for ep in range(1,n_episodes+1):
 
         # Compute gradients and store them
         est_coord = estimated_model.step(state_action)  # re-estimate values since model has been updated
-        #RBL_grad = CAG.computeRBLGrad(action, mu_a, std_a, delta_rwd)
-        EBL_grad = CAG.computeEBLGrad(y=coord, est_y=est_coord, action=action, mu_a=mu_a, std_a=std_a, delta_rwd=delta_rwd)
-        print(EBL_grad)
-        exit()
+        R_grad = CAG.computeRBLGrad(action, mu_a, std_a, delta_rwd)
+        E_grad = CAG.computeEBLGrad(y=coord, est_y=est_coord, action=action, mu_a=mu_a, std_a=std_a, delta_rwd=delta_rwd)
+
+        gradients.append(beta * E_grad + (1-beta) * R_grad)
+        action_variables.append(torch.cat([mu_a,std_a],dim=1))
 
         current_x = x_coord
         current_y = y_coord
+        cue = torch.randn_like(n_target_lines).unsqueeze(0) # each one-hot denotes different cue
+
+    CAG.update(gradients, action_variables)
 
     # Store variables after pre-train (including final trials without a perturbation)
     if ep % t_print ==0:
@@ -160,9 +166,9 @@ file_dir = os.path.dirname(os.path.abspath(__file__))
 file_dir = os.path.join(file_dir,'results/model')
 
 # Store model
-if beta_mu ==0:
+if beta ==0:
     data = 'RBL_model.pt'
-elif beta_mu ==1:    
+elif beta ==1:    
     data = 'EBL_model.pt'
 else:
     data = 'Mixed_model.pt'

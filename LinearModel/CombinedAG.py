@@ -2,18 +2,15 @@ import torch
 
 class CombActionGradient:
 
-    def __init__(self, actor, beta_mu, beta_std, rbl_std_weight=1, ebl_std_weight=1):
+    def __init__(self, actor, beta, rbl_weight=1, ebl_weight=1):
 
-        assert beta_mu >= 0 and beta_mu <= 1, "beta must be between 0 and 1 (inclusive)"
+        assert beta >= 0 and beta <= 1, "beta must be between 0 and 1 (inclusive)"
 
         self.actor = actor
-        self.beta_mu = beta_mu
-        self.beta_std = beta_std
+        self.beta = beta
 
-        self.rbl_std_weight = torch.tensor(rbl_std_weight)
-        self.ebl_std_weight = torch.tensor(ebl_std_weight)
-
-        self.beta = torch.tensor([beta_mu, beta_std])
+        self.rbl_weight = torch.tensor(rbl_weight)
+        self.ebl_weight = torch.tensor(ebl_weight)
     
     def update(self, y, est_y, action, mu_a, std_a, delta_rwd):
         """ Perform update by comgining two gradient updates """
@@ -21,7 +18,7 @@ class CombActionGradient:
         R_grad = self.computeRBLGrad(action, mu_a, std_a, delta_rwd)
         E_grad = self.computeEBLGrad(y, est_y, action, mu_a, std_a, delta_rwd)
 
-        comb_action_grad = self.beta * (self.ebl_std_weight * E_grad) + (1-self.beta) * (self.rbl_std_weight*R_grad) # Combine the two gradients
+        comb_action_grad = self.beta * (self.ebl_weight * E_grad) + (1-self.beta) * (self.rbl_weight*R_grad) # Combine the two gradients
 
         action_variables = torch.stack([mu_a, std_a])
         agent_grad = self.actor.ActionGrad_update(comb_action_grad, action_variables)

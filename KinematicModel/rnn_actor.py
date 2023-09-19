@@ -51,11 +51,11 @@ class Actor(nn.Module):
         output = self.l2(output) 
 
         if self.learn_std:
-            mu_a = output[...,:self.action_s]
-            log_std_a = output[...,self.action_s:]
+            mu_a = output[...,:self.action_s].squeeze()
+            log_std_a = output[...,self.action_s:].squeeze()
         else:
-            mu_a = output
-            log_std_a = torch.zeros_like(mu_a)
+            mu_a = output.squeeze()
+            log_std_a = torch.zeros_like(mu_a).squeeze()
 
         return torch.tanh(mu_a) * self.max_angle, log_std_a
 
@@ -76,7 +76,7 @@ class Actor(nn.Module):
         a_noise = torch.randn_like(mu_a) * action_std 
 
         # Compute action from sampled Gaussian policy
-        return torch.clip(mu_a + a_noise, min=-self.max_angle, max=self.max_angle).squeeze(), mu_a.squeeze(), action_std.squeeze()
+        return torch.clip(mu_a + a_noise, min=-self.max_angle, max=self.max_angle), mu_a, action_std
 
     def ActionGrad_update(self,gradient, action):
 

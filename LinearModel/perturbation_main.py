@@ -31,10 +31,9 @@ fixd_a_noise = 0.025 # set to experimental data value
 a_ln_rate = 0.1
 c_ln_rate = 0.05
 model_ln_rate = 0.01
-beta_mu = 1 # To reproduce Izawa and Shadmer, 2011 results, use beta_mu = 0.25 for combined grads 
-beta_std = beta_mu
-rbl_std_weight = [0.01, 0.01]
-ebl_std_weight = [1, 75]
+beta = 1 # To reproduce Izawa and Shadmer, 2011 results, use beta = 0.25 for combined grads 
+rbl_weight = [0.01, 0.01]
+ebl_weight = [1, 75]
 
 
 
@@ -52,7 +51,7 @@ mean_rwd = models['Mean_rwd']
 
 # Initialise additional components
 model = Mot_model()
-CAG = CombActionGradient(actor=actor, beta_mu=beta_mu, beta_std=beta_std, rbl_std_weight=rbl_std_weight, ebl_std_weight=ebl_std_weight)
+CAG = CombActionGradient(actor=actor, beta=beta, rbl_weight=rbl_weight, ebl_weight=ebl_weight)
 
 tot_accuracy = []
 tot_actions = []
@@ -93,7 +92,7 @@ for ep in range(0,tot_trials):
     ## ==============================================
 
     # For rwd-base learning give rwd of 1 if reach better than previous else -1
-    if beta_mu == 0:
+    if beta == 0:
        delta_rwd /= torch.abs(delta_rwd.detach()) 
 
     # Update the model
@@ -118,9 +117,9 @@ outcome_variability = np.std(tot_outcomes[-fixed_trials:])
 print("Tot variability: ",outcome_variability) # compute variability across final fixed trials like in paper
 
 ## Save data
-if beta_mu == 0:
+if beta == 0:
     label = "RBL"
-elif beta_mu == 1:        
+elif beta == 1:        
     label = "EBL"
 else:        
     label = "Mixed"

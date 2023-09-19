@@ -21,8 +21,7 @@ fixd_a_noise = 0.02 # set to experimental data value
 a_ln_rate = 0.01
 c_ln_rate = 0.1
 model_ln_rate = 0.01
-beta_mu = 0.5
-beta_std = beta_mu
+beta = 0.5
 rbl_std_weight =  1.5
 ebl_std_weight = 0.1
 
@@ -36,7 +35,7 @@ model = Mot_model()
 actor = Actor(output_s=2, ln_rate = a_ln_rate, trainable = True)
 estimated_model = Mot_model(ln_rate=model_ln_rate,lamb=None, Fixed = False)
 
-CAG = CombActionGradient(actor, beta_mu, beta_std, rbl_std_weight, ebl_std_weight)
+CAG = CombActionGradient(actor, beta, rbl_std_weight, ebl_std_weight)
 
 tot_accuracy = []
 mean_rwd = 0
@@ -63,7 +62,7 @@ for ep in range(1,trials+1):
     ## ==============================================
 
     # For rwd-base learning give rwd of 1 if reach better than previous else -1
-    if beta_mu == 0:
+    if beta == 0:
        delta_rwd /= torch.abs(delta_rwd.detach()) 
 
 
@@ -92,9 +91,9 @@ file_dir = os.path.join(file_dir,'results/model')
 os.makedirs(file_dir, exist_ok=True)
 
 # Store model
-if beta_mu ==0:
+if beta ==0:
     data = 'RBL_model.pt'
-elif beta_mu ==1:    
+elif beta ==1:    
     data = 'EBL_model.pt'
 else:
     data = 'Mixed_model.pt'
