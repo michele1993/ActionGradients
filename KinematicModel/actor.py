@@ -19,7 +19,7 @@ class Actor(nn.Module):
         else:
             self.l2 = nn.Linear(hidden_size,action_s)
 
-        self.optim = opt.Adam(self.parameters(),ln_rate) #, weight_decay=1e-3)
+        self.optimizer = opt.Adam(self.parameters(),ln_rate) #, weight_decay=1e-3)
 
     def forward(self,x):
 
@@ -56,18 +56,16 @@ class Actor(nn.Module):
     def update(self,loss):
 
         loss = torch.sum(loss)
-        self.optimiser.zero_grad()
+        self.optimizer.zero_grad()
         loss.backward()
-        self.optimiser.step()
+        self.optimizer.step()
 
 
-    def ActionGrad_update(self,gradient, action):
+    def ActionGrad_update(self,gradients, action):
 
-        action.backward(gradient=gradient)
-        #print("\n","Actor weight grad: ", self.l2.weight.grad)
-        #print(,"Actor bias grad: ",self.l2.bias.grad)
-        self.optimiser.step()
-        self.optimiser.zero_grad()
+        action.backward(gradient=gradients)
+        self.optimizer.step()
+        self.optimizer.zero_grad()
 
 
     def small_weight_init(self,l):

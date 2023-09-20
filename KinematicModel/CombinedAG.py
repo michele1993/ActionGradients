@@ -2,18 +2,14 @@ import torch
 
 class CombActionGradient:
 
-    def __init__(self, actor, rbl_weight=1, ebl_weight=1):
+    def __init__(self, actor, action_s, rbl_weight=1, ebl_weight=1):
 
 
         self.actor = actor
 
-        self.rbl_weight = torch.tensor([rbl_weight]).unsqueeze(0)
-        self.ebl_weight = torch.tensor([ebl_weight]).unsqueeze(0)
+        self.rbl_weight = torch.repeat_interleave(torch.tensor([rbl_weight]),2,dim=-1)
+        self.ebl_weight = torch.repeat_interleave(torch.tensor([ebl_weight]),2,dim=-1)
     
-    def update(self,gradients, action_variables): 
-        pass
-
-
     def computeRBLGrad(self, action, mu_a, std_a, delta_rwd):
         """ Compute reward-based learning (REINFORCE) action gradient 
         NOTE: Here we are computing the gradients explicitly, so need to specify torch.no_grad()
@@ -28,6 +24,7 @@ class CombActionGradient:
 
         #Combine two grads relative to mu and std into one vector
         R_grad =  self.rbl_weight * torch.cat([R_dr_dmu_a, R_dr_dstd_a],dim=1)
+        
 
         return R_grad
 

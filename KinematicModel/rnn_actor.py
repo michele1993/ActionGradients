@@ -26,7 +26,7 @@ class Actor(nn.Module):
         else:
             self.l2 = nn.Linear(hidden_size,action_s)
 
-        self.optim = opt.Adam(self.parameters(),ln_rate) #, weight_decay=1e-3)
+        self.optimizer = opt.Adam(self.parameters(),ln_rate) #, weight_decay=1e-3)
 
         # Initialise initial hidden state
         self.init_states()
@@ -35,7 +35,6 @@ class Actor(nn.Module):
     def init_states(self):
         self.hidden_state = torch.zeros(self.num_layers, self.batch_size, self.hidden_size)
         self.contex_state = torch.zeros(self.num_layers, self.batch_size, self.hidden_size)
-                            
 
     def forward(self,x):
 
@@ -81,10 +80,8 @@ class Actor(nn.Module):
     def ActionGrad_update(self,gradient, action):
 
         action.backward(gradient=gradient)
-        #print("\n","Actor weight grad: ", self.l2.weight.grad)
-        #print(,"Actor bias grad: ",self.l2.bias.grad)
-        self.optimiser.step()
-        self.optimiser.zero_grad()
+        self.optimizer.step()
+        self.optimizer.zero_grad()
 
         # Refresh h state after each update
         self.init_states()

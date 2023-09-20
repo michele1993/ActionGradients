@@ -16,7 +16,8 @@ from CombinedAG import CombActionGradient
 
 torch.manual_seed(0)
 
-n_episodes = 2500
+n_episodes = 5000
+model_pretrain = 100
 t_print = 100
 save_file = False
 action_s = 2 # two angles in 2D kinematic arm model
@@ -30,9 +31,11 @@ fixd_a_noise = 0.02 # set to experimental data value
 a_ln_rate = 0.01
 c_ln_rate = 0.1
 model_ln_rate = 0.001
-beta = 0.5
-rbl_weight =  1.5
-ebl_weight = 0.1
+beta = 0
+#rbl_weight =  [1.5]
+#ebl_weight = [0.1]
+rbl_weight = [0.01, 0.01]
+ebl_weight = [1, 1]
 
 assert beta >= 0 and beta <= 1, "beta must be between 0 and 1 (inclusive)"
 
@@ -87,7 +90,7 @@ y_targ = torch.tensor(np.array(y_targ)).T # shape:[batch, n_steps]
 estimated_model = ForwardModel(state_s=state_s,action_s=action_s, max_coord=max_coord, ln_rate=model_ln_rate)
 actor = Actor(input_s= n_target_lines, batch_size=n_target_lines, ln_rate = a_ln_rate, learn_std=True)
 
-CAG = CombActionGradient(actor, rbl_weight, ebl_weight)
+CAG = CombActionGradient(actor, action_s, rbl_weight, ebl_weight)
 
 
 tot_accuracy = []
@@ -104,7 +107,7 @@ for ep in range(1,n_episodes+1):
     current_y = torch.tensor([y_0]).repeat(n_target_lines,1)
 
     gradients = []
-    action_variables []
+    action_variables = []
     for t in range(n_steps):
         # Sample action from Gaussian policy
         action, mu_a, std_a = actor.computeAction(cue, fixd_a_noise)
@@ -134,27 +137,30 @@ for ep in range(1,n_episodes+1):
         model_loss = estimated_model.update(x_coord, y_coord, est_coord)
         model_losses.append(model_loss/n_steps)
 
-        # Compute gradients and store them
-        est_coord = estimated_model.step(state_action)  # re-estimate values since model has been updated
-        R_grad = CAG.computeRBLGrad(action, mu_a, std_a, delta_rwd)
-        E_grad = CAG.computeEBLGrad(y=coord, est_y=est_coord, action=action, mu_a=mu_a, std_a=std_a, delta_rwd=delta_rwd)
+        if ep > model_pretrain:
+            # Compute gradients 
+            est_coord = estimated_model.step(state_action)  # re-estimate values since model has been updated
+            R_grad = CAG.computeRBLGrad(action, mu_a, std_a, delta_rwd)
+            E_grad = CAG.computeEBLGrad(y=coord, est_y=est_coord, action=action, mu_a=mu_a, std_a=std_a, delta_rwd=delta_rwd)
 
-        gradients.append(beta * E_grad + (1-beta) * R_grad)
-        action_variables.append(torch.cat([mu_a,std_a],dim=1))
+            # Store gradients
+            gradients.append(beta * E_grad + (1-beta) * R_grad)
+            action_variables.append(torch.cat([mu_a,std_a],dim=1))
 
         current_x = x_coord
         current_y = y_coord
-        cue = torch.randn_like(n_target_lines).unsqueeze(0) # each one-hot denotes different cue
+        cue = torch.randn_like(cue) # each one-hot denotes different cue
 
-    CAG.update(gradients, action_variables)
+    if gradients: 
+        actor.ActionGrad_update(torch.cat(gradients), torch.cat(action_variables))
 
     # Store variables after pre-train (including final trials without a perturbation)
     if ep % t_print ==0:
         accuracy = sum(trial_acc) / len(trial_acc)
         m_loss = sum(model_losses) / len(model_losses)
         print("ep: ",ep)
-        #print("accuracy: ",accuracy)
-        #print("std_a: ", std_a)
+        print("accuracy: ",accuracy)
+        print("std_a: ", std_a)
         print("Model Loss: ", m_loss,"\n")
         tot_accuracy.append(accuracy)
         trial_acc = []
