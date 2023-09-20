@@ -6,14 +6,12 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 from CombinedAG import CombActionGradient
+from utils import compute_targetLines
 
 """ Implement a line drawing task based on a 2D kinematic model - I follow the task of Boven et al., 2023 where the policy is a RNN that has to draw
     one of 6 possible traget straight lines only based on an inital cue. So, it is not a feedback model since the agent does not have access to the current state.
     However, I assume that the (learned) feedfoward model has access to the current state in order to compute the correct EBL gradients """
     
-
-
-
 torch.manual_seed(0)
 
 n_episodes = 5000
@@ -28,66 +26,42 @@ sensory_noise = 0.01
 fixd_a_noise = 0.02 # set to experimental data value
 
 # Set update variables
+beta = 0.5
+assert beta >= 0 and beta <= 1, "beta must be between 0 and 1 (inclusive)"
 a_ln_rate = 0.01
 c_ln_rate = 0.1
 model_ln_rate = 0.001
-beta = 0
-#rbl_weight =  [1.5]
-#ebl_weight = [0.1]
-rbl_weight = [0.01, 0.01]
+rbl_weight = [1,1]#[0.01, 0.01]
 ebl_weight = [1, 1]
 
-assert beta >= 0 and beta <= 1, "beta must be between 0 and 1 (inclusive)"
+# Set experiment variables
+n_target_lines = 6
+n_steps = 10
+step_x_update = 2
+
 
 # Initialise env
 model = Kinematic_model()
+large_circle_radium = model.l1 + model.l2 # maximum reacheable coordinate based on lenght of entire arm 
+small_circle_radius = model.l1 # circle defined by radius of upper arm
 
-## ====== Generate 6 lists of targets (i.e. lines) ====== 
-# All target lines start from the same initial point (x_0,y_0)
-phi_0 = np.pi/2
-# Compute min and max value within reaching space (this may exclude some reaching space, but doesn't matter)
-small_circle_radius = model.l1 
-max_coord = model.l1 + model.l2 
+## ====== Generate n. lists of targets (i.e. lines) ====== 
 
-# Compute origin as point in front in the middle of reaching space
+# All target lines start from the same initial origin point (x_0,y_0)
+# Compute origin as point tanget to shoulder in the middle of reaching space (arbitary choice)
 x_0 = 0
-y_0 = (max_coord - small_circle_radius)/2 + small_circle_radius
+y_0 = (large_circle_radium - small_circle_radius)/2 + small_circle_radius
+target_origin = [x_0,y_0]
+line_lenght = 0.2 # length of each target line in meters
 
-# Generate n. target lines 
-n_steps = 10 # based on Joe's paper
-n_target_lines = 6
-max_line_lenght = 0.2 # meters
+## ----- Check that target line length do not go outside reacheable space -----
+distance = np.sqrt(x_0**2 + y_0**2) # assuming shoulder is at (0,0)
+assert (line_lenght + distance) < large_circle_radium  and (distance-line_lenght) > small_circle_radius, "line_lenght needs to be shorter or risk of going outside reacheable space"  
 
-assert max_line_lenght < np.abs(y_0 - small_circle_radius), "the max line lenght needs to be shorter or risk of going outside reacheable space"  
-
-step_size = max_line_lenght / n_steps
-radiuses = np.linspace(step_size, max_line_lenght+step_size, n_steps)
-# Create n. equally spaced angle to create lines
-ang_range = np.arange(0,n_target_lines) * (2 * np.pi) / n_target_lines
-
-# Use unit circle to create lines by multiplying by growing radiuses to draw lines
-cos_targ_xs = np.cos(ang_range)
-sin_targ_ys = np.sin(ang_range)
-x_targ = []
-y_targ = []
-# Use for loop to multiple each radius by corrspoding sine and cosine (should also be doable by proper np broadcasting)
-for r in radiuses: 
-    x_targ.append((cos_targ_xs * r)+x_0)
-    y_targ.append((sin_targ_ys * r)+y_0)
-
-x_targ = torch.tensor(np.array(x_targ)).T # shape:[batch, n_steps]
-y_targ = torch.tensor(np.array(y_targ)).T # shape:[batch, n_steps]
-
-
-
-## ======== Verification Plot ===========
-# Check the targets are on 6 different lines
-#plt.plot(x_targ,y_targ)
-#plt.show()
-## =============================
+x_targ, y_targ = compute_targetLines(target_origin, n_target_lines, n_steps, line_lenght) # shape: [n_target_lines, n_steps] , allowing batch training
 
 ## ==== Initialise components ==========
-estimated_model = ForwardModel(state_s=state_s,action_s=action_s, max_coord=max_coord, ln_rate=model_ln_rate)
+estimated_model = ForwardModel(state_s=state_s,action_s=action_s, max_coord=large_circle_radium, ln_rate=model_ln_rate)
 actor = Actor(input_s= n_target_lines, batch_size=n_target_lines, ln_rate = a_ln_rate, learn_std=True)
 
 CAG = CombActionGradient(actor, action_s, rbl_weight, ebl_weight)
@@ -137,7 +111,7 @@ for ep in range(1,n_episodes+1):
         model_loss = estimated_model.update(x_coord, y_coord, est_coord)
         model_losses.append(model_loss/n_steps)
 
-        if ep > model_pretrain:
+        if ep > model_pretrain and t % step_x_update == 0:
             # Compute gradients 
             est_coord = estimated_model.step(state_action)  # re-estimate values since model has been updated
             R_grad = CAG.computeRBLGrad(action, mu_a, std_a, delta_rwd)
