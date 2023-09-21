@@ -14,7 +14,7 @@ from utils import compute_targetLines
     
 torch.manual_seed(0)
 
-n_episodes = 5000
+n_episodes = 8000
 model_pretrain = 100
 t_print = 100
 save_file = False
@@ -22,22 +22,22 @@ action_s = 2 # two angles in 2D kinematic arm model
 state_s = 2 # 2D space x,y-coord
 
 # Set noise variables
-sensory_noise = 0.01
-fixd_a_noise = 0.02 # set to experimental data value
+sensory_noise = 0.0001
+fixd_a_noise = 0.0001 #.0002 # set to experimental data value
 
 # Set update variables
-beta = 0.5
+beta = 1
 assert beta >= 0 and beta <= 1, "beta must be between 0 and 1 (inclusive)"
-a_ln_rate = 0.01
+a_ln_rate = 0.005
 c_ln_rate = 0.1
 model_ln_rate = 0.001
-rbl_weight = [1,1]#[0.01, 0.01]
-ebl_weight = [1, 1]
+rbl_weight = [1,1]
+ebl_weight = [1,1]
 
 # Set experiment variables
 n_target_lines = 6
 n_steps = 10
-step_x_update = 2
+step_x_update = 3
 
 
 # Initialise env
@@ -52,20 +52,21 @@ small_circle_radius = model.l1 # circle defined by radius of upper arm
 x_0 = 0
 y_0 = (large_circle_radium - small_circle_radius)/2 + small_circle_radius
 target_origin = [x_0,y_0]
-line_lenght = 0.2 # length of each target line in meters
+line_lenght = 0.1 # length of each target line in meters
 
 ## ----- Check that target line length do not go outside reacheable space -----
 distance = np.sqrt(x_0**2 + y_0**2) # assuming shoulder is at (0,0)
 assert (line_lenght + distance) < large_circle_radium  and (distance-line_lenght) > small_circle_radius, "line_lenght needs to be shorter or risk of going outside reacheable space"  
 
 x_targ, y_targ = compute_targetLines(target_origin, n_target_lines, n_steps, line_lenght) # shape: [n_target_lines, n_steps] , allowing batch training
-
 ## ==== Initialise components ==========
 estimated_model = ForwardModel(state_s=state_s,action_s=action_s, max_coord=large_circle_radium, ln_rate=model_ln_rate)
 actor = Actor(input_s= n_target_lines, batch_size=n_target_lines, ln_rate = a_ln_rate, learn_std=True)
 
 CAG = CombActionGradient(actor, action_s, rbl_weight, ebl_weight)
 
+
+command_line = f'Step x update: {step_x_update}, fixd_a_noise: {fixd_a_noise}, sensory_noise: {sensory_noise}, a_ln: {a_ln_rate}, rbl_weight: {rbl_weight}, ebl_weight: {ebl_weight}' 
 
 tot_accuracy = []
 mean_rwd = 0
@@ -96,9 +97,10 @@ for ep in range(1,n_episodes+1):
         # Compute differentiable rwd signal
         coord = torch.cat([x_coord,y_coord], dim=1).requires_grad_(True)
 
-        rwd = torch.sqrt((coord[:,0:1] - x_targ[:,t:t+1])**2 + (coord[:,1:2] - y_targ[:,t:t+1])**2) # it is actually a punishment
+        #rwd = torch.sqrt((coord[:,0:1] - x_targ[:,t:t+1])**2 + (coord[:,1:2] - y_targ[:,t:t+1])**2) # it is actually a punishment
+        rwd = (coord[:,0:1] - x_targ[:,t:t+1])**2 + (coord[:,1:2] - y_targ[:,t:t+1])**2 # it is actually a punishment
 
-        trial_acc.append(torch.mean(rwd.detach()).item())
+        trial_acc.append(torch.mean(torch.sqrt(rwd.detach())).item())
         
         ## ====== Use running average to compute RPE =======
         delta_rwd = rwd - mean_rwd
@@ -142,8 +144,10 @@ for ep in range(1,n_episodes+1):
 
 ## ===== Save results =========
 # Create directory to store results
+run_dir = f'{step_x_update}_update'
 file_dir = os.path.dirname(os.path.abspath(__file__))
-file_dir = os.path.join(file_dir,'results/model')
+file_dir = os.path.join(file_dir,'results',run_dir, 'model')
+
 
 # Store model
 if beta ==0:
@@ -154,13 +158,21 @@ else:
     data = 'Mixed_model.pt'
 model_dir = os.path.join(file_dir,data)
 
+current_x = torch.tensor([x_0]).repeat(n_target_lines,1)
+current_y = torch.tensor([y_0]).repeat(n_target_lines,1)
+origin = torch.cat([current_x,current_y],dim=1)
 if save_file:
-    # Create directory if it did't exist before
     os.makedirs(file_dir, exist_ok=True)
+    # Create directory if it did't exist before
+    # Store command line
+    with open(os.path.join(file_dir,'commands.txt'), 'w') as f:
+        f.write(command_line)
     torch.save({
+        'Accuracy': tot_accuracy,
+        'Origin': origin,
+        'Targets': torch.stack([x_targ,y_targ]),
         'Actor': actor.state_dict(),
-        'Net_optim': actor.optimiser.state_dict(),
-        'Mean_rwd': mean_rwd,
+        'Net_optim': actor.optimizer.state_dict(),
         'Est_model': estimated_model.state_dict(),
         'Model_optim': estimated_model.optimiser.state_dict(),
     }, model_dir)
