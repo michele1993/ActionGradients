@@ -8,9 +8,9 @@ from IPython.display import set_matplotlib_formats
 ## Load data
 file_dir = os.path.dirname(os.path.abspath(__file__))
 
-label_1 = 'EBL'
+label_1 = 'RBL'
 label_2 = 'Mixed'
-label_3 = 'RBL'
+label_3 = 'EBL'
 
 labels = [label_1, label_2, label_3]
 results = []
@@ -44,7 +44,7 @@ fig, axs = plt.subplots(nrows=1, ncols=3, figsize=(7.5,3),
  gridspec_kw={'wspace': 0.32, 'hspace': 0.3, 'left': 0.1, 'right': 0.95, 'bottom': 0.15,
                                                'top': 0.9})
 
-conditions = ['ERR','EPE', 'RWD']
+conditions = ["RBL","Mixed","EBL"]
 i=0
 t = np.arange(1,results.shape[-1]+1)
 for d in results:
@@ -61,7 +61,7 @@ for d in results:
     i+=1
 
 ## SAVE: 1st figure
-plt.savefig('/Users/px19783/Desktop/ActionGrad_1st_experiment_accuracy', format='png', dpi=1200)
+#plt.savefig('/Users/px19783/Desktop/ActionGrad_1st_experiment_accuracy', format='png', dpi=1200)
 
 # Subplot
 fig, ax2 = plt.subplots(nrows=1, ncols=1, figsize=(2.5,3.5),

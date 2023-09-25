@@ -15,14 +15,14 @@ for dd in range(1,n_updates+1):
         ataxia_score = np.load(os.path.join(file_dir,str(dd)+'_update',d+'_ataxia_score.npy'))
         ataxia_data.append(sum(ataxia_score)/len(ataxia_score))
 
-ataxia_data = np.array(ataxia_data).reshape(n_updates,len(error_dirs))
+ataxia_data = np.array(ataxia_data).reshape(n_updates,len(error_dirs)) * 100 # convert to cm
 
 # Load outcomes only for n_update_x_step = 1
 update = 1 
 
-RBL_outcome = np.load(os.path.join(file_dir,str(update)+'_update',error_dirs[0]+'_outcomes.npy'))
-Mixed_outcome = np.load(os.path.join(file_dir,str(update)+'_update',error_dirs[1]+'_outcomes.npy'))
-EBL_outcome = np.load(os.path.join(file_dir,str(update)+'_update',error_dirs[2]+'_outcomes.npy'))
+RBL_outcome = np.load(os.path.join(file_dir,str(update)+'_update',error_dirs[0]+'_outcomes.npy')) * 100 # convert to cm
+Mixed_outcome = np.load(os.path.join(file_dir,str(update)+'_update',error_dirs[1]+'_outcomes.npy')) * 100 # convert to cm
+EBL_outcome = np.load(os.path.join(file_dir,str(update)+'_update',error_dirs[2]+'_outcomes.npy')) * 100 # convert to cm
 
 outcome_data = [RBL_outcome, Mixed_outcome, EBL_outcome]
 
@@ -33,7 +33,7 @@ mpl.rcParams['xtick.labelsize'] = font_s
 mpl.rcParams['ytick.labelsize'] = font_s 
 
 fig, axs = plt.subplots(nrows=1, ncols=4, figsize=(7.5,3),
- gridspec_kw={'wspace': 0.32, 'hspace': 0.3, 'left': 0.1, 'right': 0.95, 'bottom': 0.15,
+ gridspec_kw={'wspace': 0.35, 'hspace': 0.3, 'left': 0.1, 'right': 0.95, 'bottom': 0.15,
                                                'top': 0.9})
 
 conditions = ['RBL', 'Mixed', 'EBL']
@@ -56,6 +56,7 @@ for d in outcome_data:
 axs[3].bar(conditions,ataxia_data[0,:],align='center', alpha=0.5,ecolor='black', capsize=5, color='tab:gray',edgecolor='k')
 axs[3].spines['right'].set_visible(False)
 axs[3].spines['top'].set_visible(False)
+axs[3].set_ylabel('Ataxia score')
 
-plt.show()
-#plt.savefig('/Users/px19783/Desktop/ActionGrad_2nd_experiment_writing', format='png', dpi=1200)
+#plt.show()
+plt.savefig('/Users/px19783/Desktop/ActionGrad_2nd_experiment_writing', format='png', dpi=1200)
