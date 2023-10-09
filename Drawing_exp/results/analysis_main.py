@@ -12,7 +12,7 @@ from utils import compute_targetLines
 
 torch.manual_seed(0)
 
-save_results = True
+save_results = False
 action_s = 2 # two angles in 2D kinematic arm model
 state_s = 2 # 2D space x,y-coord
 a_ln_rate = 0
@@ -33,8 +33,8 @@ model = Kinematic_model()
 actor = Actor(input_s= n_target_lines, batch_size=n_target_lines, ln_rate = a_ln_rate, learn_std=True)
 
 # Load Agent 
-beta = 0.5
-step_x_update = 3
+beta = 1
+step_x_update = 4
 
 file_dir = os.path.dirname(os.path.abspath(__file__))
 file_dir = os.path.join(file_dir,str(step_x_update)+'_update')

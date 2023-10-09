@@ -14,7 +14,7 @@ from utils import compute_targetLines
     
 torch.manual_seed(0)
 
-n_episodes = 8000  # NOTE: For beta=0.5 use n_episodes=5000 (ie.early stopping) 
+n_episodes = 5000  # NOTE: For beta=0.5 use n_episodes=5000 (ie.early stopping) 
 model_pretrain = 100
 t_print = 100
 save_file = False
@@ -26,7 +26,7 @@ sensory_noise = 0.0001
 fixd_a_noise = 0.0001 #.0002 # set to experimental data value
 
 # Set update variables
-beta = 1
+beta = 0.5
 assert beta >= 0 and beta <= 1, "beta must be between 0 and 1 (inclusive)"
 a_ln_rate = 0.005
 c_ln_rate = 0.1
@@ -37,7 +37,7 @@ ebl_weight = [1,1]
 # Set experiment variables
 n_target_lines = 6
 n_steps = 10
-step_x_update = 3
+step_x_update = 1
 
 
 # Initialise env
@@ -72,6 +72,12 @@ tot_accuracy = []
 mean_rwd = 0
 trial_acc = []
 model_losses = []
+
+ebl_gradients = []
+rbl_gradients = []
+EBL_tot_grad = []
+RBL_tot_grad = []
+
 for ep in range(1,n_episodes+1):
 
     # Initialise cues at start of each trial
@@ -83,6 +89,7 @@ for ep in range(1,n_episodes+1):
 
     gradients = []
     action_variables = []
+
     for t in range(n_steps):
         # Sample action from Gaussian policy
         action, mu_a, std_a = actor.computeAction(cue, fixd_a_noise)
@@ -122,13 +129,17 @@ for ep in range(1,n_episodes+1):
             # Store gradients
             gradients.append(beta * E_grad + (1-beta) * R_grad)
             action_variables.append(torch.cat([mu_a,std_a],dim=1))
+            
+            ebl_gradients.append(torch.norm(E_grad,dim=-1))
+            rbl_gradients.append(torch.norm(R_grad, dim=-1))
 
         current_x = x_coord
         current_y = y_coord
         cue = torch.randn_like(cue) # each one-hot denotes different cue
 
     if gradients: 
-        actor.ActionGrad_update(torch.cat(gradients), torch.cat(action_variables))
+        gradients = torch.cat(gradients)
+        actor.ActionGrad_update(gradients, torch.cat(action_variables))
 
     # Store variables after pre-train (including final trials without a perturbation)
     if ep % t_print ==0:
@@ -141,22 +152,28 @@ for ep in range(1,n_episodes+1):
         tot_accuracy.append(accuracy)
         trial_acc = []
         model_losses = []
+        if ebl_gradients:
+            ebl_gradients = torch.cat(ebl_gradients).mean()
+            rbl_gradients = torch.cat(rbl_gradients).mean()
+            EBL_tot_grad.append(ebl_gradients)
+            RBL_tot_grad.append(rbl_gradients)
+            ebl_gradients = []
+            rbl_gradients = []
 
 ## ===== Save results =========
 # Create directory to store results
 run_dir = f'{step_x_update}_update'
 file_dir = os.path.dirname(os.path.abspath(__file__))
-file_dir = os.path.join(file_dir,'results',run_dir, 'model')
-
+file_dir = os.path.join(file_dir,'results',run_dir)
 
 # Store model
 if beta ==0:
-    data = 'RBL_model.pt'
+    data = 'RBL'
 elif beta ==1:    
-    data = 'EBL_model.pt'
+    data = 'EBL'
 else:
-    data = 'Mixed_model.pt'
-model_dir = os.path.join(file_dir,data)
+    data = 'Mixed'
+model_dir = os.path.join(file_dir,'model',data+'_model.pt')
 
 current_x = torch.tensor([x_0]).repeat(n_target_lines,1)
 current_y = torch.tensor([y_0]).repeat(n_target_lines,1)
@@ -176,3 +193,5 @@ if save_file:
         'Est_model': estimated_model.state_dict(),
         'Model_optim': estimated_model.optimiser.state_dict(),
     }, model_dir)
+    grads = torch.stack([torch.tensor(RBL_tot_grad), torch.tensor(EBL_tot_grad)])
+    np.save(os.path.join(file_dir,data+'_gradients.npy'), grads.numpy())
