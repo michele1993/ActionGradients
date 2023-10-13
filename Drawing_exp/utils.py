@@ -30,8 +30,8 @@ def compute_targetLines(origin,n_target_lines, n_steps, line_lenght=0.2):
         x_targ.append((cos_targ_xs * r)+origin[0])
         y_targ.append((sin_targ_ys * r)+origin[1])
 
-    x_targ = torch.tensor(np.array(x_targ)).T # shape:[batch, n_steps]
-    y_targ = torch.tensor(np.array(y_targ)).T # shape:[batch, n_steps]
+    x_targ = torch.tensor(np.array(x_targ),dtype=torch.float32).T # shape:[batch, n_steps]
+    y_targ = torch.tensor(np.array(y_targ),dtype=torch.float32).T # shape:[batch, n_steps]
 
     ## ======== Verification Plot ===========
     # Check the targets are on 6 different lines

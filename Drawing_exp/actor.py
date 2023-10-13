@@ -20,7 +20,7 @@ class Actor(nn.Module):
             self.l2 = nn.Linear(hidden_size,action_s)
 
         #self.optimizer = opt.Adam(self.parameters(),ln_rate) #, weight_decay=1e-3)
-        self.optimizer = opt.SGD(self.parameters(),ln_rate) #, weight_decay=1e-3)
+        self.optimizer = opt.SGD(self.parameters(),ln_rate)
 
     def forward(self,x):
 

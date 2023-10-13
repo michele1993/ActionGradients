@@ -34,7 +34,7 @@ actor = Actor(input_s= n_target_lines, batch_size=n_target_lines, ln_rate = a_ln
 
 # Load Agent 
 beta = 1
-step_x_update = 4
+step_x_update = 1
 
 file_dir = os.path.dirname(os.path.abspath(__file__))
 file_dir = os.path.join(file_dir,str(step_x_update)+'_update')
@@ -102,5 +102,5 @@ if save_results:
     np.save(acc_dir,np.array(trial_acc))
     np.save(outcomes_dir,np.array(outcomes))
 
-#plt.plot(outcomes[:,:,0],outcomes[:,:,1])
-#plt.show()
+plt.plot(outcomes[:,:,0],outcomes[:,:,1])
+plt.show()

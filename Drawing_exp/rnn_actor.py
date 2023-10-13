@@ -8,7 +8,7 @@ from torch.distributions import Categorical
 
 class Actor(nn.Module):
 
-    def __init__(self,input_s=6, action_s=2, batch_size=1,hidden_size=56, ln_rate=1e-3, learn_std=True, max_angle=np.pi):
+    def __init__(self,input_s=6, action_s=2, batch_size=1,hidden_size=56, ln_rate=1e-3, learn_std=True, max_angle=np.pi, lr_decay=0.97):
 
         super().__init__()
 
@@ -27,6 +27,7 @@ class Actor(nn.Module):
             self.l2 = nn.Linear(hidden_size,action_s)
 
         self.optimizer = opt.Adam(self.parameters(),ln_rate) #, weight_decay=1e-3)
+        self.scheduler = opt.lr_scheduler.ExponentialLR(self.optimizer,gamma=lr_decay)
 
         # Initialise initial hidden state
         self.init_states()
