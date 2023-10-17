@@ -1,4 +1,5 @@
 import sys
+import argparse
 sys.path.append('..')
 import os
 from Kinematic_Motor_model  import Kinematic_model
@@ -11,8 +12,18 @@ from CombinedAG import CombActionGradient
 from utils import compute_targetLines
 
 torch.manual_seed(0)
+parser = argparse.ArgumentParser()
+parser.add_argument('--beta', '-b',type=float, nargs='?')
+parser.add_argument('--step_x_update','-sxu', type=int, nargs='?', default=1)
 
-save_results = False
+## Argparse variables:
+args = parser.parse_args()
+
+beta = args.beta
+step_x_update = args.step_x_update
+
+
+save_results = True
 action_s = 2 # two angles in 2D kinematic arm model
 state_s = 2 # 2D space x,y-coord
 a_ln_rate = 0
@@ -33,9 +44,6 @@ model = Kinematic_model()
 actor = Actor(input_s= n_target_lines, batch_size=n_target_lines, ln_rate = a_ln_rate, learn_std=True)
 
 # Load Agent 
-beta = 1
-step_x_update = 1
-
 file_dir = os.path.dirname(os.path.abspath(__file__))
 file_dir = os.path.join(file_dir,str(step_x_update)+'_update')
 
@@ -102,5 +110,5 @@ if save_results:
     np.save(acc_dir,np.array(trial_acc))
     np.save(outcomes_dir,np.array(outcomes))
 
-plt.plot(outcomes[:,:,0],outcomes[:,:,1])
-plt.show()
+#plt.plot(outcomes[:,:,0],outcomes[:,:,1])
+#plt.show()

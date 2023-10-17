@@ -70,10 +70,11 @@ axs[1,1].legend(loc='upper center', bbox_to_anchor=(0.25, 1), frameon=False, fon
 
 ## Plot training gradients for Mixed condition only for n_update_x_step = 1
 update = 1 # only have data for first update
-gradients = np.load(os.path.join(file_dir,str(update)+'_update','Mixed_gradients.npy')) 
+RBL_grad = np.load(os.path.join(file_dir,str(update)+'_update','RBL_gradients.npy'))[0,:] 
+EBL_grad = np.load(os.path.join(file_dir,str(update)+'_update','EBL_gradients.npy'))[1,:]
 
-RBL_grad = gradients[0,:]
-EBL_grad = gradients[1,:]
+#RBL_grad = gradients[0,:]
+#EBL_grad = gradients[1,:]
 
 t = np.arange(1,len(RBL_grad)+1)
 axs[1,2].plot(t,RBL_grad,label='RBL')

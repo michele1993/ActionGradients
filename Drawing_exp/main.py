@@ -1,4 +1,6 @@
 import os
+import sys
+import argparse
 from Kinematic_Motor_model  import Kinematic_model
 from Forward_model import ForwardModel
 from Gradient_model import GradientModel
@@ -13,11 +15,21 @@ import matplotlib as mpl
 """ Implement a line drawing task based on a 2D kinematic model - I follow the task of Boven et al., 2023 where the policy is a RNN that has to draw
     one of 6 possible traget straight lines only based on an inital cue. So, it is not a feedback model since the agent does not have access to the current state.
     However, I assume that the (learned) feedfoward model has access to the current state in order to compute the correct EBL gradients """
-    
-torch.manual_seed(1)
 
+parser = argparse.ArgumentParser()
+parser.add_argument('--beta', '-b',type=float, nargs='?')
+parser.add_argument('--step_x_update','-sxu', type=int, nargs='?', default=1)
+
+## Argparse variables:
+args = parser.parse_args()
+
+beta = args.beta
+step_x_update = args.step_x_update
+
+    
+torch.manual_seed(0)
 save_file = True
-n_episodes = 12000  # NOTE: For beta=0.5 use n_episodes=5000 (ie.early stopping) 
+n_episodes = 5000  # NOTE: For beta=0.5 use n_episodes=5000 (ie.early stopping) 
 model_pretrain = 100
 grad_pretrain = model_pretrain * 1
 t_print = 100
@@ -25,11 +37,10 @@ action_s = 2 # two angles in 2D kinematic arm model
 state_s = 2 # 2D space x,y-coord
 
 # Set noise variables
-sensory_noise = 0#.0001
-fixd_a_noise = 0#.0001 #.0002 # set to experimental data value
+sensory_noise = 0#0.0001
+fixd_a_noise = 0.0001 #.0002 # set to experimental data value
 
 # Set update variables
-beta = 0
 assert beta >= 0 and beta <= 1, "beta must be between 0 and 1 (inclusive)"
 c_ln_rate = 0.1
 model_ln_rate = 0.001
@@ -40,7 +51,6 @@ ebl_weight = [1,1]
 # Set experiment variables
 n_target_lines = 6
 n_steps = 10
-step_x_update = 1
 
 
 # Initialise env
@@ -66,14 +76,14 @@ x_targ, y_targ = compute_targetLines(target_origin, n_target_lines, n_steps, lin
 
 gradModel_lr_decay = 0.9
 if beta == 1:
-    actor_lr_decay =0.97
-    a_ln_rate = 0.0035
+    actor_lr_decay =0.99
+    a_ln_rate = 0.005 #0.005 #0.0025
 elif beta == 0:
-    actor_lr_decay =0.999
-    a_ln_rate = 0.0025
+    actor_lr_decay = 0.99
+    a_ln_rate = 0.005
 else:
-    actor_lr_decay =0.999
-    a_ln_rate = 0.0025
+    actor_lr_decay =0.99
+    a_ln_rate = 0.005
 
 estimated_model = ForwardModel(state_s=state_s,action_s=action_s, max_coord=large_circle_radium, ln_rate=model_ln_rate)
 grad_estimator = GradientModel(state_s=state_s,action_s=action_s, ln_rate=grad_model_ln_rate, lr_decay= gradModel_lr_decay)
@@ -165,7 +175,8 @@ for ep in range(1,n_episodes+1):
 
             # Store gradients
             if ep > grad_pretrain:
-                gradients.append(beta * E_grad + (1-beta) * R_grad)
+                gradients.append(beta * E_grad + (1-beta) * torch.clip(R_grad,-5,5))
+                #gradients.append(beta * E_grad + (1-beta) * R_grad)
                 action_variables.append(torch.cat([mu_a,std_a],dim=1))
                 
                 # Store the gradient magnitude for plotting purposes
