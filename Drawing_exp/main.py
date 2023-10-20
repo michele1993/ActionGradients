@@ -28,7 +28,7 @@ step_x_update = args.step_x_update
 
     
 torch.manual_seed(0)
-save_file = True
+save_file = False
 n_episodes = 5000  # NOTE: For beta=0.5 use n_episodes=5000 (ie.early stopping) 
 model_pretrain = 100
 grad_pretrain = model_pretrain * 1
@@ -37,7 +37,7 @@ action_s = 2 # two angles in 2D kinematic arm model
 state_s = 2 # 2D space x,y-coord
 
 # Set noise variables
-sensory_noise = 0#0.0001
+sensory_noise = 0 #0.1 #0.0001
 fixd_a_noise = 0.0001 #.0002 # set to experimental data value
 
 # Set update variables
@@ -98,10 +98,15 @@ mean_rwd = 0
 trial_acc = []
 model_losses = []
 
-ebl_gradients = []
-rbl_gradients = []
-EBL_tot_grad = []
-RBL_tot_grad = []
+norm_ebl_gradients = []
+norm_rbl_gradients = []
+norm_EBL_tot_grad = []
+norm_RBL_tot_grad = []
+
+ebl_mu_gradients = []
+rbl_mu_gradients = []
+EBL_mu_tot_grad = []
+RBL_mu_tot_grad = []
 
 ## ====== Diagnostic variables ========
 grad_model_loss = []
@@ -161,7 +166,11 @@ for ep in range(1,n_episodes+1):
             R_grad = CAG.computeRBLGrad(action, mu_a, std_a, delta_rwd)
             E_grad = CAG.computeEBLGrad(y=coord, est_y=est_coord, action=action, mu_a=mu_a, std_a=std_a, delta_rwd=delta_rwd)
             target_ebl_grads.append(torch.mean(E_grad,dim=0))
-            #E_grad = CAG.computeEBLGrad(y=coord, est_y=coord, action=action, mu_a=mu_a, std_a=std_a, delta_rwd=delta_rwd)
+
+
+
+            # ====== Compute true Gradient for plotting ========
+            #true_E_grad = CAG.computeEBLGrad(y=coord, est_y=coord, action=action, mu_a=mu_a, std_a=std_a, delta_rwd=delta_rwd)
 
             # Learn the EBL grad
             c_target = torch.cat([x_targ[:,t:t+1], y_targ[:,t:t+1]],dim=-1).detach() 
@@ -177,11 +186,16 @@ for ep in range(1,n_episodes+1):
             if ep > grad_pretrain:
                 gradients.append(beta * E_grad + (1-beta) * torch.clip(R_grad,-5,5))
                 #gradients.append(beta * E_grad + (1-beta) * R_grad)
-                action_variables.append(torch.cat([mu_a,std_a],dim=1))
+                a_variab = torch.cat([mu_a,std_a],dim=1) 
+                action_variables.append(a_variab)
                 
                 # Store the gradient magnitude for plotting purposes
-                ebl_gradients.append(torch.norm(E_grad,dim=-1))
-                rbl_gradients.append(torch.norm(R_grad, dim=-1))
+                norm_ebl_gradients.append(torch.norm(E_grad,dim=-1))
+                norm_rbl_gradients.append(torch.norm(R_grad, dim=-1))
+
+                # Store the gradient of policy mean  for plotting purposes
+                ebl_mu_gradients.append(torch.mean(E_grad[:,0:2],dim=0))
+                rbl_mu_gradients.append(torch.mean(R_grad[:,0:2], dim=0))
 
         current_x = x_coord
         current_y = y_coord
@@ -203,16 +217,23 @@ for ep in range(1,n_episodes+1):
         model_losses = []
 
         ## Store gradients values for plotting purposes
-        if ebl_gradients:
+        if norm_ebl_gradients:
             ## Update learning rate:
             actor.scheduler.step()
             grad_estimator.scheduler.step()
-            ebl_gradients = torch.cat(ebl_gradients).mean()
-            rbl_gradients = torch.cat(rbl_gradients).mean()
-            EBL_tot_grad.append(ebl_gradients)
-            RBL_tot_grad.append(rbl_gradients)
-            ebl_gradients = []
-            rbl_gradients = []
+            norm_ebl_gradients = torch.cat(norm_ebl_gradients).mean()
+            norm_rbl_gradients = torch.cat(norm_rbl_gradients).mean()
+            norm_EBL_tot_grad.append(norm_ebl_gradients)
+            norm_RBL_tot_grad.append(norm_rbl_gradients)
+            norm_ebl_gradients = []
+            norm_rbl_gradients = []
+
+            ebl_mu_gradients = torch.stack(ebl_mu_gradients).mean(dim=0)
+            rbl_mu_gradients = torch.stack(rbl_mu_gradients).mean(dim=0)
+            EBL_mu_tot_grad.append(ebl_mu_gradients)
+            RBL_mu_tot_grad.append(rbl_mu_gradients)
+            ebl_mu_gradients = []
+            rbl_mu_gradients = []
             
             ## ====== Diagnostic variables ========
             target_eblGrad = torch.stack(target_ebl_grads).mean(dim=0).norm()
