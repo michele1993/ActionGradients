@@ -6,7 +6,8 @@ import matplotlib as mpl
 file_dir = os.path.dirname(os.path.abspath(__file__))
 
 ataxia_data = []
-error_dirs = ['RBL','Mixed','EBL']
+beta = 0.5
+error_dirs = ['RBL','Mixed_'+str(beta),'EBL']
 n_updates = 4
 ## Load data for three types of errors across 3 conditions (i.e. update every 1 step, every 2 step, etc..)
 for dd in range(1,n_updates+1):
@@ -19,6 +20,7 @@ ataxia_data = np.array(ataxia_data).reshape(n_updates,len(error_dirs)) * 100 # c
 
 # Load outcomes only for n_update_x_step = 1, i.e. only plot hand traject for this condition
 update = 1 
+
 
 RBL_outcome = np.load(os.path.join(file_dir,str(update)+'_update',error_dirs[0]+'_outcomes.npy')) * 100 # convert to cm
 Mixed_outcome = np.load(os.path.join(file_dir,str(update)+'_update',error_dirs[1]+'_outcomes.npy')) * 100 # convert to cm

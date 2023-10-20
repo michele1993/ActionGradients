@@ -52,7 +52,7 @@ if beta ==0:
 elif beta ==1:    
     data = 'EBL'
 else:
-    data = 'Mixed'
+    data = 'Mixed_'+str(beta)
 
 model_dir = os.path.join(file_dir,'model',data+'_model.pt')
 

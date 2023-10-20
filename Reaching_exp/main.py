@@ -4,7 +4,7 @@ import argparse
 from Kinematic_Motor_model  import Kinematic_model
 from Forward_model import ForwardModel
 from Gradient_model import GradientModel
-from rnn_actor import Actor
+from actor import Actor
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
@@ -18,18 +18,16 @@ import matplotlib as mpl
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--beta', '-b',type=float, nargs='?')
-parser.add_argument('--step_x_update','-sxu', type=int, nargs='?', default=1)
 
 ## Argparse variables:
 args = parser.parse_args()
 
 beta = args.beta
-step_x_update = args.step_x_update
 
     
 torch.manual_seed(0)
 save_file = False
-n_episodes = 8000  # NOTE: For beta=0.5 use n_episodes=5000 (ie.early stopping) 
+n_episodes = 10000  # NOTE: For beta=0.5 use n_episodes=5000 (ie.early stopping) 
 model_pretrain = 100
 grad_pretrain = model_pretrain * 1
 t_print = 100
@@ -37,21 +35,21 @@ action_s = 2 # two angles in 2D kinematic arm model
 state_s = 2 # 2D space x,y-coord
 
 # Set noise variables
-sensory_noise = 0.0001 #0.0001
+sensory_noise = 0.01 #0.1 #0.0001
 fixd_a_noise = 0.0001 #.0002 # set to experimental data value
 
 # Set update variables
 assert beta >= 0 and beta <= 1, "beta must be between 0 and 1 (inclusive)"
-actor_lr_decay = 0.99
-gradModel_lr_decay = 0.9
-a_ln_rate = 0.0025 
+gradModel_lr_decay = 1
+actor_lr_decay = 1
+a_ln_rate = 0.001
 c_ln_rate = 0.1
-model_ln_rate = 0.001
-grad_model_ln_rate = 0.001
+model_ln_rate = 0.01
+grad_model_ln_rate = 0.01#.01
 rbl_weight = [1,1]
 ebl_weight = [1,1]
 
-# Set experiment variables
+# Set experiment variables needed to define targets 
 n_target_lines = 6
 n_steps = 10
 
@@ -61,29 +59,32 @@ model = Kinematic_model()
 large_circle_radium = model.l1 + model.l2 # maximum reacheable coordinate based on lenght of entire arm 
 small_circle_radius = model.l1 # circle defined by radius of upper arm
 
-## ====== Generate n. lists of targets (i.e. lines) ====== 
+## ====== Generate a target for each cue (i.e. points) by taking final point on 6 lines ====== 
 
-# All target lines start from the same initial origin point (x_0,y_0)
+# Always start from the same initial origin point (x_0,y_0)
 # Compute origin as point tanget to shoulder in the middle of reaching space (arbitary choice)
 x_0 = 0
 y_0 = (large_circle_radium - small_circle_radius)/2 + small_circle_radius
 target_origin = [x_0,y_0]
-line_lenght = 0.1 # length of each target line in meters
+distance_from_target = 0.2 
 
 ## ----- Check that target line length do not go outside reacheable space -----
 distance = np.sqrt(x_0**2 + y_0**2) # assuming shoulder is at (0,0)
-assert (line_lenght + distance) < large_circle_radium  and (distance-line_lenght) > small_circle_radius, "line_lenght needs to be shorter or risk of going outside reacheable space"  
+assert (distance_from_target + distance) < large_circle_radium  and (distance-distance_from_target) > small_circle_radius, "line_lenght needs to be shorter or risk of going outside reacheable space"  
 
-x_targ, y_targ = compute_targetLines(target_origin, n_target_lines, n_steps, line_lenght) # shape: [n_target_lines, n_steps] , allowing batch training
+# Create single target by taking final point on a line
+x_targ, y_targ = compute_targetLines(target_origin, n_target_lines, n_steps, distance_from_target) # shape: [n_target_lines, n_steps] , allowing batch training
+x_targ = x_targ[:,-1:]
+y_targ = y_targ[:,-1:]
 
 ## ==== Initialise components ==========
 estimated_model = ForwardModel(state_s=state_s,action_s=action_s, max_coord=large_circle_radium, ln_rate=model_ln_rate)
 grad_estimator = GradientModel(state_s=state_s,action_s=action_s, ln_rate=grad_model_ln_rate, lr_decay= gradModel_lr_decay)
-actor = Actor(input_s= n_target_lines, batch_size=n_target_lines, ln_rate = a_ln_rate, learn_std=True,lr_decay=actor_lr_decay)
+actor = Actor(input_s= n_target_lines, ln_rate = a_ln_rate, learn_std=True,lr_decay=actor_lr_decay)
 CAG = CombActionGradient(actor, action_s, rbl_weight, ebl_weight)
 
 
-command_line = f'Step x update: {step_x_update}, fixd_a_noise: {fixd_a_noise}, sensory_noise: {sensory_noise}, a_ln: {a_ln_rate}, rbl_weight: {rbl_weight}, ebl_weight: {ebl_weight}' 
+command_line = f'fixd_a_noise: {fixd_a_noise}, sensory_noise: {sensory_noise}, a_ln: {a_ln_rate}, rbl_weight: {rbl_weight}, ebl_weight: {ebl_weight}' 
 
 tot_accuracy = []
 mean_rwd = 0
@@ -107,94 +108,78 @@ target_ebl_grads = []
 tot_target_ebl_grads = []
 ## ===================================
 
-## TRIAL: Try passing the cue to the gradient NN (assume memory)
-#target_cue = torch.eye(n_target_lines).unsqueeze(0) # each one-hot denotes different cue
+# Initialise cues at start of each trial
+cue = torch.eye(n_target_lines)
+
+# Initialise starting position for each target line (start all from the same point)
+current_x = torch.tensor([x_0]).repeat(n_target_lines,1)
+current_y = torch.tensor([y_0]).repeat(n_target_lines,1)
+
 for ep in range(1,n_episodes+1):
 
-    # Initialise cues at start of each trial
-    cue = torch.eye(n_target_lines).unsqueeze(0) # each one-hot denotes different cue
+    # Sample action from Gaussian policy
+    action, mu_a, std_a = actor.computeAction(cue, fixd_a_noise)
 
-    # Initialise starting position for each target line (start all from the same point)
-    current_x = torch.tensor([x_0]).repeat(n_target_lines,1)
-    current_y = torch.tensor([y_0]).repeat(n_target_lines,1)
+    # Perform action in the env
+    true_x_coord,true_y_coord = model.step(action.detach())
+    #true_x_coord,true_y_coord = model.step(action)
 
-    gradients = []
-    action_variables = []
+    # Add noise to sensory obs
+    x_coord = true_x_coord + torch.randn_like(true_x_coord) * sensory_noise 
+    y_coord = true_y_coord + torch.randn_like(true_y_coord) * sensory_noise 
 
-    for t in range(n_steps):
-        # Sample action from Gaussian policy
-        action, mu_a, std_a = actor.computeAction(cue, fixd_a_noise)
+    # Compute differentiable rwd signal
+    coord = torch.cat([x_coord,y_coord], dim=1).requires_grad_(True)
+    #coord = torch.cat([x_coord,y_coord], dim=1)
 
-        # Perform action in the env
-        true_x_coord,true_y_coord = model.step(action.detach())
-        #true_x_coord,true_y_coord = model.step(action)
+    rwd = (coord[:,0:1] - x_targ)**2 + (coord[:,1:2] - y_targ)**2 # it is actually a punishment
 
-        # Add noise to sensory obs
-        x_coord = true_x_coord + torch.randn_like(true_x_coord) * sensory_noise 
-        y_coord = true_y_coord + torch.randn_like(true_y_coord) * sensory_noise 
+    trial_acc.append(torch.mean(torch.sqrt(rwd.detach())).item())
+    
+    ## ====== Use running average to compute RPE =======
+    delta_rwd = rwd - mean_rwd
+    mean_rwd += c_ln_rate * delta_rwd.detach()
+    ## ==============================================
 
-        # Compute differentiable rwd signal
-        coord = torch.cat([x_coord,y_coord], dim=1).requires_grad_(True)
-        #coord = torch.cat([x_coord,y_coord], dim=1)
+    # Update the model
+    state_action = torch.cat([current_x,current_y,action],dim=1)
+    est_coord = estimated_model.step(state_action.detach())
+    model_loss = estimated_model.update(x_coord.detach(), y_coord.detach(), est_coord)
+    model_losses.append(model_loss.detach()/n_steps)
 
-        rwd = (coord[:,0:1] - x_targ[:,t:t+1])**2 + (coord[:,1:2] - y_targ[:,t:t+1])**2 # it is actually a punishment
+    if ep > model_pretrain: 
+        # Compute gradients 
+        est_coord = estimated_model.step(state_action)  # re-estimate values since model has been updated
+        R_grad = CAG.computeRBLGrad(action, mu_a, std_a, delta_rwd)
+        E_grad = CAG.computeEBLGrad(y=coord, est_y=est_coord, action=action, mu_a=mu_a, std_a=std_a, delta_rwd=delta_rwd)
 
-        trial_acc.append(torch.mean(torch.sqrt(rwd.detach())).item())
-        
-        ## ====== Use running average to compute RPE =======
-        delta_rwd = rwd - mean_rwd
-        mean_rwd += c_ln_rate * delta_rwd.detach()
-        ## ==============================================
+        # ====== Compute true Gradient for plotting ========
+        #true_E_grad = CAG.computeEBLGrad(y=coord, est_y=coord, action=action, mu_a=mu_a, std_a=std_a, delta_rwd=delta_rwd)
 
-        # Update the model
-        state_action = torch.cat([current_x,current_y,action],dim=1)
-        est_coord = estimated_model.step(state_action.detach())
-        model_loss = estimated_model.update(x_coord.detach(), y_coord.detach(), est_coord)
-        model_losses.append(model_loss.detach()/n_steps)
+        # Learn the EBL grad
+        c_target = torch.cat([x_targ, y_targ],dim=-1).detach() 
+        est_E_grad = grad_estimator(state_action.detach(),c_target)
+        grad_loss = grad_estimator.update(E_grad, est_E_grad)
+        grad_model_loss.append(grad_loss.detach())
 
-        if ep > model_pretrain and t % step_x_update == 0:
-            # Compute gradients 
-            est_coord = estimated_model.step(state_action)  # re-estimate values since model has been updated
-            R_grad = CAG.computeRBLGrad(action, mu_a, std_a, delta_rwd)
-            E_grad = CAG.computeEBLGrad(y=coord, est_y=est_coord, action=action, mu_a=mu_a, std_a=std_a, delta_rwd=delta_rwd)
-            target_ebl_grads.append(torch.mean(E_grad,dim=0))
+        # Use the estimated gradient for training Actor
+        E_grad = est_E_grad.detach() #+ torch.randn_like(est_E_grad) * 0
 
+        # Store gradients
+        if ep > grad_pretrain:
+            gradient = beta * E_grad + (1-beta) * torch.clip(R_grad,-5,5)
+            a_variab = torch.cat([mu_a,std_a],dim=1) 
 
+            actor.ActionGrad_update(gradient, a_variab)
+            
+            # Store the gradient magnitude for plotting purposes
+            norm_ebl_gradients.append(torch.norm(E_grad,dim=-1))
+            norm_rbl_gradients.append(torch.norm(R_grad, dim=-1))
 
-            # ====== Compute true Gradient for plotting ========
-            #true_E_grad = CAG.computeEBLGrad(y=coord, est_y=coord, action=action, mu_a=mu_a, std_a=std_a, delta_rwd=delta_rwd)
+            # Store the gradient of policy mean  for plotting purposes
+            ebl_mu_gradients.append(torch.mean(E_grad[:,0:2],dim=0))
+            rbl_mu_gradients.append(torch.mean(R_grad[:,0:2], dim=0))
 
-            # Learn the EBL grad
-            c_target = torch.cat([x_targ[:,t:t+1], y_targ[:,t:t+1]],dim=-1).detach() 
-            est_E_grad = grad_estimator(state_action.detach(),c_target)
-            grad_loss = grad_estimator.update(E_grad, est_E_grad)
-            #grad_model_loss.append(grad_loss.detach())
-            grad_model_loss.append(torch.sqrt((E_grad - est_E_grad)**2).detach())
-
-            # Use the estimated gradient for training Actor
-            E_grad = est_E_grad.detach() #+ torch.randn_like(est_E_grad) * 0
-
-            # Store gradients
-            if ep > grad_pretrain:
-                gradients.append(beta * E_grad + (1-beta) * torch.clip(R_grad,-5,5))
-                #gradients.append(beta * E_grad + (1-beta) * R_grad)
-                a_variab = torch.cat([mu_a,std_a],dim=1) 
-                action_variables.append(a_variab)
-                
-                # Store the gradient magnitude for plotting purposes
-                norm_ebl_gradients.append(torch.norm(E_grad,dim=-1))
-                norm_rbl_gradients.append(torch.norm(R_grad, dim=-1))
-
-                # Store the gradient of policy mean  for plotting purposes
-                ebl_mu_gradients.append(torch.mean(E_grad[:,0:2],dim=0))
-                rbl_mu_gradients.append(torch.mean(R_grad[:,0:2], dim=0))
-
-        current_x = x_coord
-        current_y = y_coord
-        cue = torch.randn_like(cue) # each one-hot denotes different cue
-
-    if gradients: 
-        actor.ActionGrad_update(torch.cat(gradients), torch.cat(action_variables))
 
     # Store variables after pre-train (including final trials without a perturbation)
     if ep % t_print ==0:
@@ -202,7 +187,7 @@ for ep in range(1,n_episodes+1):
         m_loss = sum(model_losses) / len(model_losses)
         print("ep: ",ep)
         print("accuracy: ",accuracy)
-        print("std_a: ", std_a)
+        #print("std_a: ", std_a)
         #print("Model Loss: ", m_loss)
         tot_accuracy.append(accuracy)
         trial_acc = []
@@ -228,14 +213,14 @@ for ep in range(1,n_episodes+1):
             rbl_mu_gradients = []
             
             ## ====== Diagnostic variables ========
-            target_eblGrad = torch.stack(target_ebl_grads).mean(dim=0).norm()
-            grad_loss = torch.cat(grad_model_loss).mean()
+            #target_eblGrad = torch.stack(target_ebl_grads).mean(dim=0).norm()
+            #grad_loss = torch.cat(grad_model_loss).mean()
             #print("\nTarget grad: ", target_eblGrad)
-            print("Grad Loss: ", grad_loss, "\n")
-            tot_target_ebl_grads.append(target_eblGrad)
-            tot_grad_model_loss.append(grad_loss) 
-            target_ebl_grads = []
-            grad_model_loss = []
+            #print("Grad Loss: ", grad_loss, "\n")
+            #tot_target_ebl_grads.append(target_eblGrad)
+            #tot_grad_model_loss.append(grad_loss) 
+            #target_ebl_grads = []
+            #grad_model_loss = []
             ## ===================================
 ## ===== Plot diagnostic data ======
 font_s =7
@@ -277,9 +262,8 @@ axs[2].set_xticklabels([])
 
 ## ===== Save results =========
 # Create directory to store results
-run_dir = f'{step_x_update}_update'
 file_dir = os.path.dirname(os.path.abspath(__file__))
-file_dir = os.path.join(file_dir,'results',run_dir)
+file_dir = os.path.join(file_dir,'results')
 
 # Store model
 if beta ==0:
