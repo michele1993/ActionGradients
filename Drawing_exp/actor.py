@@ -79,24 +79,21 @@ class Actor(nn.Module):
 
 class Critic(nn.Module):
 
-    def __init__(self, tot_a=1, input_s=1, out_put=1, ln_rate=1e-3):
+    def __init__(self, input_s=1, output_s=1, h_state=116, ln_rate=1e-3):
         super().__init__()
 
-        self.tot_a = tot_a
-        #self.Q_est = nn.Linear(input_s, out_put)
-
-        # Q has to be at least quadratic:
-        #self.bias = nn.Parameter(torch.randn(1,))
-        #self.linearP = nn.Parameter(torch.randn(1,))
-        self.quadraticP = nn.Parameter(torch.randn(1, )**2) # Initialise to positive value
+        self.l1 = nn.Linear(input_s,h_state)
+        self.l2 = nn.Linear(h_state,output_s) 
 
         self.optimiser = opt.Adam(self.parameters(), ln_rate)
 
-    def forward(self, action):
+    def forward(self, x):
 
-        return action**2 * self.quadraticP
-        #return self.bias + action * self.linearP + action ** 2 * self.quadraticP
-        #return self.Q_est(action)
+        x = self.l1(x)
+        x = torch.relu(x)
+        x = self.l2(x)
+
+        return x
 
     def small_weight_init(self, l):
 
@@ -104,9 +101,9 @@ class Critic(nn.Module):
             nn.init.normal_(l.weight, mean=0, std=0.5)  # std= 0.00005
             nn.init.normal_(l.bias,mean=0, std=0.5)  # std= 0.00005
 
-    def update(self, delta_rwd):
+    def update(self, target, estimate):
 
-        loss = torch.sum(delta_rwd**2)
+        loss = torch.sum((target - estimate)**2)
         self.optimiser.zero_grad()
         loss.backward(retain_graph=True) # Need this, since delta_rwd then used to update actor
         self.optimiser.step()

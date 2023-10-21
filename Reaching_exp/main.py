@@ -21,13 +21,12 @@ parser.add_argument('--beta', '-b',type=float, nargs='?')
 
 ## Argparse variables:
 args = parser.parse_args()
-
 beta = args.beta
 
     
 torch.manual_seed(0)
 save_file = False
-n_episodes = 10000  # NOTE: For beta=0.5 use n_episodes=5000 (ie.early stopping) 
+n_episodes = 5000  # NOTE: For beta=0.5 use n_episodes=5000 (ie.early stopping) 
 model_pretrain = 100
 grad_pretrain = model_pretrain * 1
 t_print = 100
@@ -35,7 +34,7 @@ action_s = 2 # two angles in 2D kinematic arm model
 state_s = 2 # 2D space x,y-coord
 
 # Set noise variables
-sensory_noise = 0.01 #0.1 #0.0001
+sensory_noise = 0.005 #0.1 #0.0001
 fixd_a_noise = 0.0001 #.0002 # set to experimental data value
 
 # Set update variables
@@ -43,9 +42,9 @@ assert beta >= 0 and beta <= 1, "beta must be between 0 and 1 (inclusive)"
 gradModel_lr_decay = 1
 actor_lr_decay = 1
 a_ln_rate = 0.001
-c_ln_rate = 0.1
-model_ln_rate = 0.01
-grad_model_ln_rate = 0.01#.01
+c_ln_rate = 0.01
+model_ln_rate = 0.001
+grad_model_ln_rate = 0.0001#.01
 rbl_weight = [1,1]
 ebl_weight = [1,1]
 
@@ -185,8 +184,8 @@ for ep in range(1,n_episodes+1):
     if ep % t_print ==0:
         accuracy = sum(trial_acc) / len(trial_acc)
         m_loss = sum(model_losses) / len(model_losses)
-        print("ep: ",ep)
-        print("accuracy: ",accuracy)
+        #print("ep: ",ep)
+        #print("accuracy: ",accuracy)
         #print("std_a: ", std_a)
         #print("Model Loss: ", m_loss)
         tot_accuracy.append(accuracy)
@@ -222,6 +221,8 @@ for ep in range(1,n_episodes+1):
             #target_ebl_grads = []
             #grad_model_loss = []
             ## ===================================
+
+print(accuracy)
 ## ===== Plot diagnostic data ======
 font_s =7
 mpl.rc('font', size=font_s)
