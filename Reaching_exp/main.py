@@ -24,7 +24,7 @@ args = parser.parse_args()
 beta = args.beta
 
     
-torch.manual_seed(0)
+torch.manual_seed(94747)
 save_file = False
 n_episodes = 5000  # NOTE: For beta=0.5 use n_episodes=5000 (ie.early stopping) 
 model_pretrain = 100
@@ -34,7 +34,7 @@ action_s = 2 # two angles in 2D kinematic arm model
 state_s = 2 # 2D space x,y-coord
 
 # Set noise variables
-sensory_noise = 0.005 #0.1 #0.0001
+sensory_noise = 0.0001 #0.1 #0.0001
 fixd_a_noise = 0.0001 #.0002 # set to experimental data value
 
 # Set update variables
@@ -42,15 +42,15 @@ assert beta >= 0 and beta <= 1, "beta must be between 0 and 1 (inclusive)"
 gradModel_lr_decay = 1
 actor_lr_decay = 1
 a_ln_rate = 0.001
-c_ln_rate = 0.01
+c_ln_rate = 0.1
 model_ln_rate = 0.001
-grad_model_ln_rate = 0.0001#.01
+grad_model_ln_rate = 0.001#.01
 rbl_weight = [1,1]
 ebl_weight = [1,1]
 
 # Set experiment variables needed to define targets 
-n_target_lines = 6
-n_steps = 10
+n_target_lines = 10 #6
+n_steps = 1
 
 
 # Initialise env
@@ -65,7 +65,7 @@ small_circle_radius = model.l1 # circle defined by radius of upper arm
 x_0 = 0
 y_0 = (large_circle_radium - small_circle_radius)/2 + small_circle_radius
 target_origin = [x_0,y_0]
-distance_from_target = 0.2 
+distance_from_target = 0.2
 
 ## ----- Check that target line length do not go outside reacheable space -----
 distance = np.sqrt(x_0**2 + y_0**2) # assuming shoulder is at (0,0)
@@ -86,7 +86,7 @@ CAG = CombActionGradient(actor, action_s, rbl_weight, ebl_weight)
 command_line = f'fixd_a_noise: {fixd_a_noise}, sensory_noise: {sensory_noise}, a_ln: {a_ln_rate}, rbl_weight: {rbl_weight}, ebl_weight: {ebl_weight}' 
 
 tot_accuracy = []
-mean_rwd = 0
+mean_rwd = torch.zeros(n_target_lines,1)
 trial_acc = []
 model_losses = []
 
@@ -136,7 +136,7 @@ for ep in range(1,n_episodes+1):
     trial_acc.append(torch.mean(torch.sqrt(rwd.detach())).item())
     
     ## ====== Use running average to compute RPE =======
-    delta_rwd = rwd - mean_rwd
+    delta_rwd = rwd - mean_rwd 
     mean_rwd += c_ln_rate * delta_rwd.detach()
     ## ==============================================
 
@@ -162,7 +162,10 @@ for ep in range(1,n_episodes+1):
         grad_model_loss.append(grad_loss.detach())
 
         # Use the estimated gradient for training Actor
-        E_grad = est_E_grad.detach() #+ torch.randn_like(est_E_grad) * 0
+        E_grad = est_E_grad.detach() + torch.randn_like(est_E_grad) * 0.1
+
+        # Add noise to R_grad
+        R_grad = R_grad + torch.randn_like(R_grad) * 0.5
 
         # Store gradients
         if ep > grad_pretrain:

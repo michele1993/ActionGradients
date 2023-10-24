@@ -61,7 +61,7 @@ for d in results:
     i+=1
 
 ## SAVE: 1st figure
-#plt.savefig('/Users/px19783/Desktop/ActionGrad_1st_experiment_accuracy', format='png', dpi=1200)
+plt.savefig('/Users/px19783/Desktop/ActionGrad_1st_experiment_accuracy', format='png', dpi=1200)
 
 # Subplot
 fig, ax2 = plt.subplots(nrows=1, ncols=1, figsize=(2.5,3.5),
@@ -82,4 +82,4 @@ for d in results:
 
 #plt.show()
 ## SAVE: 2nd figure
-#plt.savefig('/Users/px19783/Desktop/ActionGrad_1st_experiment_variability', format='png', dpi=1200)
+plt.savefig('/Users/px19783/Desktop/ActionGrad_1st_experiment_variability', format='png', dpi=1200)

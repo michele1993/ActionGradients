@@ -132,4 +132,4 @@ if save_file:
 ## Plot actions:
 t = np.arange(1,len(tot_outcomes)+1)
 plt.plot(t,tot_outcomes)
-plt.show()
+#plt.show()

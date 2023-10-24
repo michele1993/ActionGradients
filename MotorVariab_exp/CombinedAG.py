@@ -32,8 +32,8 @@ class CombActionGradient:
             # Mean action grad 
             R_dr_dmu_a = (1/(std_a**2)) * (action - mu_a) * delta_rwd
             # Std action grad
-            #R_dr_dstd_a = (delta_rwd * ((action - mu_a)**2 - std_a**2) / std_a**3)
-            R_dr_dstd_a = (delta_rwd * (action - mu_a)**2)
+            R_dr_dstd_a = (delta_rwd * ((action - mu_a)**2 - std_a**2) / std_a**3)
+            #R_dr_dstd_a = (delta_rwd * (action - mu_a)**2)
 
         #Combine two grads relative to mu and std into one vector
         R_grad = torch.cat([R_dr_dmu_a, R_dr_dstd_a])

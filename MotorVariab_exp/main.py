@@ -8,6 +8,8 @@ from CombinedAG import CombActionGradient
 
 torch.manual_seed(0)
 
+## NOTE: The baseline policy is assumed to be trained with a mixed signal (beta=0.5) to avoid favouring any of the two approaches, while starting the perturbation with the same settings.
+
 trials = 2500
 t_print = 100
 save_file = False
@@ -21,7 +23,7 @@ fixd_a_noise = 0.02 # set to experimental data value
 a_ln_rate = 0.01
 c_ln_rate = 0.1
 model_ln_rate = 0.01
-beta = 0.5
+beta = 0.5 ## DON'T CHANGE, Read NOTE above.
 rbl_weight =  1.5
 ebl_weight = 0.1
 

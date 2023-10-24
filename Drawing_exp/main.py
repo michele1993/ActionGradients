@@ -172,7 +172,8 @@ for ep in range(1,n_episodes+1):
             grad_model_loss.append(torch.sqrt((E_grad - est_E_grad)**2).detach())
 
             # Use the estimated gradient for training Actor
-            E_grad = est_E_grad.detach() #+ torch.randn_like(est_E_grad) * 0
+            E_grad = est_E_grad.detach() #+ torch.randn_like(est_E_grad) * 0.1
+            #R_grad = R_grad + torch.randn_like(R_grad) * 0.1
 
             # Store gradients
             if ep > grad_pretrain:

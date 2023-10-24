@@ -22,6 +22,12 @@ class Actor(nn.Module):
         self.optimizer = opt.Adam(self.parameters(),ln_rate) #, weight_decay=1e-3)
         #self.optimizer = opt.SGD(self.parameters(),ln_rate)
         self.scheduler = opt.lr_scheduler.ExponentialLR(self.optimizer,gamma=lr_decay)
+        self.apply(self.small_weight_init)
+
+    def small_weight_init(self,l):
+        if isinstance(l,nn.Linear):
+            nn.init.normal_(l.weight,mean=0,std= 0.1)# std= 0.00005
+            nn.init.normal_(l.bias,mean=0,std= 0.1)# std= 0.00005
 
     def forward(self,x):
 
@@ -69,14 +75,6 @@ class Actor(nn.Module):
         self.optimizer.step()
         self.optimizer.zero_grad()
 
-
-    def small_weight_init(self,l):
-
-        if isinstance(l,nn.Linear):
-            #nn.init.normal_(l.weight,mean=0,std= 0.001)# std= 0.00005
-            #l.bias.data.fill_(-2.5) # initialise to neg value so exp() return value < 1
-            l.bias.data.fill_(-1) # initialise to neg value so exp() return value < 1
-            l.weight.data.fill_(-1) # initialise to neg value so exp() return value < 1
 
 class Critic(nn.Module):
 
