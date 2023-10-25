@@ -6,7 +6,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from CombinedAG import CombActionGradient
 
+torch.manual_seed(0)
 seeds = [8721, 5467, 1092, 9372,2801]
+save = True
 # Set noise variables
 sensory_noise = 0.01
 fixd_a_noise = 0.02 # set to experimental data value
@@ -21,11 +23,11 @@ betas = np.arange(0,11,1) /10.0
 
 ## Generate N test targets between 38 and -38
 # since in Izawa's test based on pertub upto 8 degrees (and training was on max 30 degrees)
-N = 1000
-max_val, min_val = 38, -38
+N = 100
+max_val, min_val = 30,-30
 range_size = (max_val - min_val)  # 2
-#test_targets = np.random.rand(N) * range_size + min_val
-test_targets = [-45 -35 -25, -15, -5, 5, 15, 25, 35 ,45]
+test_targets = np.random.rand(N) * range_size + min_val
+#test_targets = [-45 -35 -25, -15, -5, 5, 15, 25, 35 ,45]
 y_star = torch.tensor(test_targets,dtype=torch.float32).unsqueeze(-1) * 0.0176
 
 model = Mot_model()
@@ -47,8 +49,8 @@ for s in seeds:
         action, mu_a, std_a = actor.computeAction(y_star, fixd_a_noise)
 
         # Perform action in the env
-        #true_y = model.step(action.detach())
-        true_y = model.step(mu_a.detach())
+        true_y = model.step(action.detach())
+        #true_y = model.step(mu_a.detach())
 
         rwd = np.sqrt((true_y - y_star)**2) # it is actually a punishment
         betas_acc.append(rwd.mean())
@@ -70,10 +72,11 @@ EBL_std = std_seed_acc[10]
 
 ## Save results
 tot_outcomes = [[RBL_mean,Mixed_mean,EBL_mean],[RBL_std,Mixed_std, EBL_std]]
+#tot_outcomes = [[mean_seed_acc],[std_seed_acc]]
 tot_outcomes = np.array(tot_outcomes)
 file_dir = os.path.dirname(os.path.abspath(__file__))
 file_dir = os.path.join(file_dir,'..','results','generalisation')
 os.makedirs(file_dir, exist_ok=True)
 outcome_dir = os.path.join(file_dir,'gener_results')
-
-np.save(outcome_dir,tot_outcomes)
+if save:
+    np.save(outcome_dir,tot_outcomes)

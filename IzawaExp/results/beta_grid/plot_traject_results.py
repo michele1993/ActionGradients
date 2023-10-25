@@ -70,5 +70,5 @@ for d in results:
     i+=1
 
 ## SAVE: 1st figure
-plt.savefig('/Users/px19783/Desktop/ActionGrad_1st_experiment_accuracy', format='png', dpi=1200)
-plt.show()
+#plt.savefig('/Users/px19783/Desktop/LinearMotorModel_trajectories', format='png', dpi=1200)
+#plt.show()

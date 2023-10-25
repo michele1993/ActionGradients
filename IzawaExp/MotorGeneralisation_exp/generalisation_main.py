@@ -10,7 +10,7 @@ seeds = [8721, 5467, 1092, 9372,2801]
 
 trials = 20000
 t_print = 1000
-save_file = True
+save_file = False
 
 # Set noise variables
 sensory_noise = 0.01
