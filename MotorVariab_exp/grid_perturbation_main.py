@@ -124,9 +124,11 @@ for s in seeds:
         print("Tot variability: ",outcome_variability,"\n") # compute variability across final fixed trials like in paper
 
         label = "Mixed_"+str(beta)
-        outcome_dir = os.path.join(acc_dir,label+'_outcome_variability') # For the mixed model
+        outcome_var_dir = os.path.join(acc_dir,label+'_outcome_variability') # For the mixed model
+        outcome_tot_dir = os.path.join(acc_dir,label+'_trajectories') # For the mixed model
 
         # Save all outcomes so that can then plot whatever you want
         if save_file: 
             # Only store final variability
-            np.save(outcome_dir, outcome_variability)
+            np.save(outcome_var_dir, outcome_variability)
+            np.save(outcome_tot_dir, tot_outcomes)
