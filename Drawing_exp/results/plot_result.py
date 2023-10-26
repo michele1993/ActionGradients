@@ -5,28 +5,27 @@ import matplotlib as mpl
 
 file_dir = os.path.dirname(os.path.abspath(__file__))
 
-ataxia_data = []
 beta = 0.5
 error_dirs = ['RBL','Mixed_'+str(beta),'EBL']
-n_updates = 4
+n_updates = 3
+n_seeds = 5
+ataxia_mean = []
+ataxia_std = []
 ## Load data for three types of errors across 3 conditions (i.e. update every 1 step, every 2 step, etc..)
 for dd in range(1,n_updates+1):
-    for d in error_dirs:
-        # Load Ataxia scores
-        ataxia_score = np.load(os.path.join(file_dir,str(dd)+'_update',d+'_ataxia_score.npy'))
-        ataxia_data.append(sum(ataxia_score)/len(ataxia_score))
+    # Load Ataxia scores
+    ataxia_score = np.load(os.path.join(file_dir,str(dd)+'_update','Ataxia_score.npy'))
+    ataxia_mean.append(ataxia_score[0,:])
+    ataxia_std.append(ataxia_score[1,:])
 
-ataxia_data = np.array(ataxia_data).reshape(n_updates,len(error_dirs)) * 100 # convert to cm
+ataxia_mean = np.array(ataxia_mean) 
+ataxia_se = np.array(ataxia_std) / np.sqrt(n_seeds)
 
 # Load outcomes only for n_update_x_step = 1, i.e. only plot hand traject for this condition
 update = 1 
 
-
-RBL_outcome = np.load(os.path.join(file_dir,str(update)+'_update',error_dirs[0]+'_outcomes.npy')) * 100 # convert to cm
-Mixed_outcome = np.load(os.path.join(file_dir,str(update)+'_update',error_dirs[1]+'_outcomes.npy')) * 100 # convert to cm
-EBL_outcome = np.load(os.path.join(file_dir,str(update)+'_update',error_dirs[2]+'_outcomes.npy')) * 100 # convert to cm
-
-outcome_data = [RBL_outcome, Mixed_outcome, EBL_outcome]
+outcome_data = np.load(os.path.join(file_dir,str(update)+'_update','Traject_outcomes.npy'))
+mixedModel_norm_grad = np.load(os.path.join(file_dir,str(update)+'_update','MixedModel_grads.npy'))
 
 font_s =7
 mpl.rc('font', size=font_s)
@@ -55,14 +54,20 @@ for d in outcome_data:
         axs[0,i].set_yticks([])
     i+=1
 
-axs[1,0].bar(conditions,ataxia_data[0,:],align='center', alpha=0.5,ecolor='black', capsize=5, color='tab:gray',edgecolor='k')
+axs[1,0].bar(conditions,ataxia_mean[0,:],align='center', alpha=0.5,ecolor='black', capsize=5, color='tab:gray',edgecolor='k')
+axs[1,0].errorbar(conditions,ataxia_mean[0,:], yerr=ataxia_se[0,:], ls='none', color='black',  elinewidth=1, capsize=1.5) # ecolor='lightslategray',
 axs[1,0].spines['right'].set_visible(False)
 axs[1,0].spines['top'].set_visible(False)
 axs[1,0].set_ylabel('Ataxia score')
 
 
 ## Plot ataxia changes by temporal sensory feedback
-axs[1,1].plot(np.arange(1,n_updates+1),ataxia_data, label=conditions)
+#axs[1,1].plot(np.arange(1,n_updates+1),ataxia_mean, label=conditions)
+conditions = np.arange(1,n_updates+1)
+i=1
+for m,s in zip(np.flip(ataxia_mean),np.flip(ataxia_se)):
+    axs[1,1].errorbar(conditions,m, yerr=s,capsize=3, fmt="r--o", ecolor = "black")
+    i+=1
 axs[1,1].spines['right'].set_visible(False)
 axs[1,1].spines['top'].set_visible(False)
 axs[1,1].set_xlabel('sensory temporal feedback')
@@ -71,12 +76,9 @@ axs[1,1].legend(loc='upper center', bbox_to_anchor=(0.25, 1), frameon=False, fon
 
 
 ## Plot training gradients for Mixed condition only for n_update_x_step = 1
-update = 1 # only have data for first update
-RBL_grad = np.load(os.path.join(file_dir,str(update)+'_update','RBL_gradients.npy'))[0,:] 
-EBL_grad = np.load(os.path.join(file_dir,str(update)+'_update','EBL_gradients.npy'))[1,:]
 
-#RBL_grad = gradients[0,:]
-#EBL_grad = gradients[1,:]
+RBL_grad = mixedModel_norm_grad[0,:]
+EBL_grad = mixedModel_norm_grad[1,:]
 
 t = np.arange(1,len(RBL_grad)+1)
 axs[1,2].plot(t,RBL_grad,label='RBL')
