@@ -12,9 +12,6 @@ from CombinedAG import CombActionGradient
 from utils import compute_targetLines
 import matplotlib as mpl
 
-""" Implement a line drawing task based on a 2D kinematic model - I follow the task of Boven et al., 2023 where the policy is a RNN that has to draw
-    one of 6 possible traget straight lines only based on an inital cue. So, it is not a feedback model since the agent does not have access to the current state.
-    However, I assume that the (learned) feedfoward model has access to the current state in order to compute the correct EBL gradients """
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--beta', '-b',type=float, nargs='?')
@@ -23,33 +20,41 @@ parser.add_argument('--beta', '-b',type=float, nargs='?')
 args = parser.parse_args()
 beta = args.beta
 
+seeds = [8612, 1209, 5287, 3209, 2861]
     
-torch.manual_seed(94747)
 save_file = False
-n_episodes = 5000  # NOTE: For beta=0.5 use n_episodes=5000 (ie.early stopping) 
-model_pretrain = 100
-grad_pretrain = model_pretrain * 1
-t_print = 100
+n_trials = 180  # NOTE: For beta=0.5 use n_episodes=5000 (ie.early stopping) 
+t_print = 10
 action_s = 2 # two angles in 2D kinematic arm model
 state_s = 2 # 2D space x,y-coord
 
 # Set noise variables
-sensory_noise = 0.0001 #0.1 #0.0001
-fixd_a_noise = 0.0001 #.0002 # set to experimental data value
+sensory_noise = 0.01 #0.1 #0.0001
+fixd_a_noise = 0.001 #.0002 # set to experimental data value
 
 # Set update variables
 assert beta >= 0 and beta <= 1, "beta must be between 0 and 1 (inclusive)"
 gradModel_lr_decay = 1
 actor_lr_decay = 1
 a_ln_rate = 0.001
-c_ln_rate = 0.1
+c_ln_rate = 0.05 #0.05
 model_ln_rate = 0.001
-grad_model_ln_rate = 0.001#.01
+grad_model_ln_rate = 0.001
 rbl_weight = [1,1]
 ebl_weight = [1,1]
 
+# Perturbation variables
+incremental = True
+trials_x_rotation = 20
+max_rotation = 45 * 0.01745 # convert to radiants
+c_rotation = 0
+if incremental:
+    rotation_increment = 5 * 0.01745
+else:
+    rotation_increment = max_rotation
+
 # Set experiment variables needed to define targets 
-n_target_lines = 10 #6
+n_target_lines = 6
 n_steps = 1
 
 
@@ -69,6 +74,8 @@ distance_from_target = 0.2
 
 ## ----- Check that target line length do not go outside reacheable space -----
 distance = np.sqrt(x_0**2 + y_0**2) # assuming shoulder is at (0,0)
+
+## Bypass safety check as may be too stringent
 assert (distance_from_target + distance) < large_circle_radium  and (distance-distance_from_target) > small_circle_radius, "line_lenght needs to be shorter or risk of going outside reacheable space"  
 
 # Create single target by taking final point on a line
@@ -76,14 +83,6 @@ x_targ, y_targ = compute_targetLines(target_origin, n_target_lines, n_steps, dis
 x_targ = x_targ[:,-1:]
 y_targ = y_targ[:,-1:]
 
-## ==== Initialise components ==========
-estimated_model = ForwardModel(state_s=state_s,action_s=action_s, max_coord=large_circle_radium, ln_rate=model_ln_rate)
-grad_estimator = GradientModel(state_s=state_s,action_s=action_s, ln_rate=grad_model_ln_rate, lr_decay= gradModel_lr_decay)
-actor = Actor(input_s= n_target_lines, ln_rate = a_ln_rate, learn_std=True,lr_decay=actor_lr_decay)
-CAG = CombActionGradient(actor, action_s, rbl_weight, ebl_weight)
-
-
-command_line = f'fixd_a_noise: {fixd_a_noise}, sensory_noise: {sensory_noise}, a_ln: {a_ln_rate}, rbl_weight: {rbl_weight}, ebl_weight: {ebl_weight}' 
 
 tot_accuracy = []
 mean_rwd = torch.zeros(n_target_lines,1)
@@ -114,39 +113,79 @@ cue = torch.eye(n_target_lines)
 current_x = torch.tensor([x_0]).repeat(n_target_lines,1)
 current_y = torch.tensor([y_0]).repeat(n_target_lines,1)
 
-for ep in range(1,n_episodes+1):
+# Load pretrained models
+pretrain_beta = 0.5
+file_dir = os.path.dirname(os.path.abspath(__file__))
+file_dir = os.path.join(file_dir,'results') # For the mixed model
+model_dir = os.path.join(file_dir,'Mixed_'+str(pretrain_beta)+'_model.pt') # For the mixed model
+models = torch.load(model_dir)
 
-    # Sample action from Gaussian policy
-    action, mu_a, std_a = actor.computeAction(cue, fixd_a_noise)
 
-    # Perform action in the env
-    true_x_coord,true_y_coord = model.step(action.detach())
-    #true_x_coord,true_y_coord = model.step(action)
+seed_acc = []
+for s in seeds:
+    torch.manual_seed(s)
+    np.random.seed(s)
 
-    # Add noise to sensory obs
-    x_coord = true_x_coord + torch.randn_like(true_x_coord) * sensory_noise 
-    y_coord = true_y_coord + torch.randn_like(true_y_coord) * sensory_noise 
+    ## ==== Initialise components ==========
+    estimated_model = ForwardModel(state_s=state_s,action_s=action_s, max_coord=large_circle_radium, ln_rate=model_ln_rate)
+    estimated_model.load_state_dict(models['Est_model'])
+    estimated_model.optimiser.load_state_dict(models['Model_optim'])
 
-    # Compute differentiable rwd signal
-    coord = torch.cat([x_coord,y_coord], dim=1).requires_grad_(True)
-    #coord = torch.cat([x_coord,y_coord], dim=1)
+    grad_estimator = GradientModel(state_s=state_s,action_s=action_s, ln_rate=grad_model_ln_rate, lr_decay= gradModel_lr_decay)
+    grad_estimator.load_state_dict(models['Grad_model'])
+    grad_estimator.optimiser.load_state_dict(models['Grad_model_optim'])
 
-    rwd = (coord[:,0:1] - x_targ)**2 + (coord[:,1:2] - y_targ)**2 # it is actually a punishment
+    actor = Actor(input_s= n_target_lines, ln_rate = a_ln_rate, learn_std=True,lr_decay=actor_lr_decay)
+    actor.load_state_dict(models['Actor'])
+    actor.optimizer.load_state_dict(models['Net_optim'])
 
-    trial_acc.append(torch.mean(torch.sqrt(rwd.detach())).item())
-    
-    ## ====== Use running average to compute RPE =======
-    delta_rwd = rwd - mean_rwd 
-    mean_rwd += c_ln_rate * delta_rwd.detach()
-    ## ==============================================
+    CAG = CombActionGradient(actor, action_s, rbl_weight, ebl_weight)
 
-    # Update the model
-    state_action = torch.cat([current_x,current_y,action],dim=1)
-    est_coord = estimated_model.step(state_action.detach())
-    model_loss = estimated_model.update(x_coord.detach(), y_coord.detach(), est_coord)
-    model_losses.append(model_loss.detach()/n_steps)
+    for t in range(1,n_trials+1):
 
-    if ep > model_pretrain: 
+        # Sample action from Gaussian policy
+        action, mu_a, std_a = actor.computeAction(cue, fixd_a_noise)
+
+        # Perform action in the env
+        true_x_coord,true_y_coord = model.step(action)
+
+        ## ======= Add rotation perturbation =======
+        # need to re-compute (x,y) based on the roation size
+        if t % trials_x_rotation == 1 and np.abs(c_rotation) < max_rotation:
+            c_rotation += rotation_increment
+        true_angle = torch.atan2(true_y_coord, true_x_coord) 
+        radius = torch.sqrt(true_x_coord**2 + true_y_coord**2)
+        rotated_angle = true_angle + c_rotation
+        true_x_coord = radius * torch.cos(rotated_angle)
+        true_y_coord = radius * torch.sin(rotated_angle)
+        # ---------------------------------------
+
+        # Add noise to sensory obs
+        x_coord = true_x_coord.detach() + torch.randn_like(true_x_coord) * sensory_noise 
+        y_coord = true_y_coord.detach() + torch.randn_like(true_y_coord) * sensory_noise 
+
+        # Compute differentiable rwd signal
+        coord = torch.cat([x_coord,y_coord], dim=1) 
+        coord.requires_grad_(True)
+        #coord = torch.cat([x_coord,y_coord], dim=1)
+
+        rwd = (coord[:,0:1] - x_targ)**2 + (coord[:,1:2] - y_targ)**2 # it is actually a punishment
+        true_rwd = (true_x_coord - x_targ)**2 + (true_y_coord - y_targ)**2 # it is actually a punishment
+
+        trial_acc.append(torch.mean(torch.sqrt(true_rwd.detach())).item())
+        
+        ## ====== Use running average to compute RPE =======
+        delta_rwd = rwd - mean_rwd 
+        mean_rwd += c_ln_rate * delta_rwd.detach()
+        #delta_rwd += torch.randn_like(delta_rwd)
+        ## ==============================================
+
+        # Update the model
+        state_action = torch.cat([current_x,current_y,action],dim=1)
+        est_coord = estimated_model.step(state_action.detach())
+        model_loss = estimated_model.update(x_coord.detach(), y_coord.detach(), est_coord)
+        model_losses.append(model_loss.detach()/n_steps)
+
         # Compute gradients 
         est_coord = estimated_model.step(state_action)  # re-estimate values since model has been updated
         R_grad = CAG.computeRBLGrad(action, mu_a, std_a, delta_rwd)
@@ -162,70 +201,79 @@ for ep in range(1,n_episodes+1):
         grad_model_loss.append(grad_loss.detach())
 
         # Use the estimated gradient for training Actor
-        E_grad = est_E_grad.detach() + torch.randn_like(est_E_grad) * 0.1
+        E_grad = est_E_grad.detach() + torch.randn_like(est_E_grad) * 0 #0.1
 
         # Add noise to R_grad
-        R_grad = R_grad + torch.randn_like(R_grad) * 0.5
+        R_grad = R_grad + torch.randn_like(R_grad) * 0 #0.5
 
         # Store gradients
-        if ep > grad_pretrain:
-            gradient = beta * E_grad + (1-beta) * torch.clip(R_grad,-5,5)
-            a_variab = torch.cat([mu_a,std_a],dim=1) 
+        #gradient = beta * torch.clip(E_grad,-5,5) + (1-beta) * torch.clip(R_grad,-5,5)
+        gradient = beta * E_grad + (1-beta) * R_grad
+        a_variab = torch.cat([mu_a,std_a],dim=1) 
 
-            actor.ActionGrad_update(gradient, a_variab)
-            
-            # Store the gradient magnitude for plotting purposes
-            norm_ebl_gradients.append(torch.norm(E_grad,dim=-1))
-            norm_rbl_gradients.append(torch.norm(R_grad, dim=-1))
+        actor.ActionGrad_update(gradient, a_variab)
+        
+        # Store the gradient magnitude for plotting purposes
+        norm_ebl_gradients.append(torch.norm(E_grad,dim=-1))
+        norm_rbl_gradients.append(torch.norm(R_grad, dim=-1))
 
-            # Store the gradient of policy mean  for plotting purposes
-            ebl_mu_gradients.append(torch.mean(E_grad[:,0:2],dim=0))
-            rbl_mu_gradients.append(torch.mean(R_grad[:,0:2], dim=0))
+        # Store the gradient of policy mean  for plotting purposes
+        ebl_mu_gradients.append(torch.mean(E_grad[:,0:2],dim=0))
+        rbl_mu_gradients.append(torch.mean(R_grad[:,0:2], dim=0))
 
 
-    # Store variables after pre-train (including final trials without a perturbation)
-    if ep % t_print ==0:
-        accuracy = sum(trial_acc) / len(trial_acc)
-        m_loss = sum(model_losses) / len(model_losses)
-        #print("ep: ",ep)
-        #print("accuracy: ",accuracy)
-        #print("std_a: ", std_a)
-        #print("Model Loss: ", m_loss)
-        tot_accuracy.append(accuracy)
-        trial_acc = []
-        model_losses = []
+        # Store variables after pre-train (including final trials without a perturbation)
+        if t % t_print ==0:
+            accuracy = sum(trial_acc) / len(trial_acc)
+            m_loss = sum(model_losses) / len(model_losses)
+            #print("Trial: ",t)
+            #print("Accuracy: ",accuracy)
+            #print("std_a: ", std_a)
+            #print("Model Loss: ", m_loss)
+            tot_accuracy.append(accuracy)
+            trial_acc = []
+            model_losses = []
 
-        ## Store gradients values for plotting purposes
-        if norm_ebl_gradients:
-            ## Update learning rate:
-            actor.scheduler.step()
-            grad_estimator.scheduler.step()
-            norm_ebl_gradients = torch.cat(norm_ebl_gradients).mean()
-            norm_rbl_gradients = torch.cat(norm_rbl_gradients).mean()
-            norm_EBL_tot_grad.append(norm_ebl_gradients)
-            norm_RBL_tot_grad.append(norm_rbl_gradients)
-            norm_ebl_gradients = []
-            norm_rbl_gradients = []
+            ## Store gradients values for plotting purposes
+            if norm_ebl_gradients:
+                ## Update learning rate:
+                actor.scheduler.step()
+                grad_estimator.scheduler.step()
+                norm_ebl_gradients = torch.cat(norm_ebl_gradients).mean()
+                norm_rbl_gradients = torch.cat(norm_rbl_gradients).mean()
+                norm_EBL_tot_grad.append(norm_ebl_gradients)
+                norm_RBL_tot_grad.append(norm_rbl_gradients)
+                norm_ebl_gradients = []
+                norm_rbl_gradients = []
 
-            ebl_mu_gradients = torch.stack(ebl_mu_gradients).mean(dim=0)
-            rbl_mu_gradients = torch.stack(rbl_mu_gradients).mean(dim=0)
-            EBL_mu_tot_grad.append(ebl_mu_gradients)
-            RBL_mu_tot_grad.append(rbl_mu_gradients)
-            ebl_mu_gradients = []
-            rbl_mu_gradients = []
-            
-            ## ====== Diagnostic variables ========
-            #target_eblGrad = torch.stack(target_ebl_grads).mean(dim=0).norm()
-            #grad_loss = torch.cat(grad_model_loss).mean()
-            #print("\nTarget grad: ", target_eblGrad)
-            #print("Grad Loss: ", grad_loss, "\n")
-            #tot_target_ebl_grads.append(target_eblGrad)
-            #tot_grad_model_loss.append(grad_loss) 
-            #target_ebl_grads = []
-            #grad_model_loss = []
-            ## ===================================
+                ebl_mu_gradients = torch.stack(ebl_mu_gradients).mean(dim=0)
+                rbl_mu_gradients = torch.stack(rbl_mu_gradients).mean(dim=0)
+                EBL_mu_tot_grad.append(ebl_mu_gradients)
+                RBL_mu_tot_grad.append(rbl_mu_gradients)
+                ebl_mu_gradients = []
+                rbl_mu_gradients = []
+                
+                ## ====== Diagnostic variables ========
+                #target_eblGrad = torch.stack(target_ebl_grads).mean(dim=0).norm()
+                #grad_loss = torch.cat(grad_model_loss).mean()
+                #print("\nTarget grad: ", target_eblGrad)
+                #print("Grad Loss: ", grad_loss, "\n")
+                #tot_target_ebl_grads.append(target_eblGrad)
+                #tot_grad_model_loss.append(grad_loss) 
+                #target_ebl_grads = []
+                #grad_model_loss = []
+                ## ===================================
 
-print(accuracy)
+    #print("\n Seed: ",s, "Accuracy: ", accuracy, '\n')
+    seed_acc.append(accuracy)
+
+seed_acc = np.array(seed_acc)
+mean_acc = np.mean(seed_acc)
+std_acc = np.std(seed_acc)
+print('Beta: ',beta)
+print('Incremental: ',incremental)
+print('Mean tot acc: ', mean_acc) 
+print('Std_err tot acc: ', std_acc/np.sqrt(len(seeds))) 
 ## ===== Plot diagnostic data ======
 font_s =7
 mpl.rc('font', size=font_s)

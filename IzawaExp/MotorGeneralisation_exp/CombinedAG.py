@@ -22,6 +22,8 @@ class CombActionGradient:
 
         action_variables = torch.cat([mu_a, std_a],dim=-1)
         agent_grad = self.actor.ActionGrad_update(comb_action_grad, action_variables)
+
+        return comb_action_grad
     
     def computeRBLGrad(self, action, mu_a, std_a, delta_rwd):
         """ Compute reward-based learning (REINFORCE) action gradient 
@@ -44,7 +46,9 @@ class CombActionGradient:
         """Compute error-based learning (MBDPG) action gradient 
         NOTE: torch.with_nograd not required here since autograd.grad does not compute grad by default 
         """ 
-        dr_dy = torch.autograd.grad(torch.mean(delta_rwd), y)[0] # take mean to compute grad across batch (it is okay since independent batches)
+        # Take mean to compute grad across batch (it is okay since independent batches)
+        dr_dy = torch.autograd.grad(torch.mean(delta_rwd), y, retain_graph=True)[0] 
+
         # NOTE: here I diff relative to det_a instead of action, should be the same (since sigma is fixed)
         E_dr_dmu_a = torch.autograd.grad(est_y,mu_a,grad_outputs=dr_dy, retain_graph=True)[0] 
         E_dr_dstd_a = torch.autograd.grad(est_y,std_a,grad_outputs=dr_dy, retain_graph=True)[0] 

@@ -17,7 +17,7 @@ class Mot_model(nn.Module):
             self.apply(self.F_weight_init)
             print("fixed")
         else:
-            self.apply(self.weight_init)
+            #self.apply(self.weight_init)
             self.optimiser = opt.SGD(self.parameters(), ln_rate, momentum=0)
 
     def step(self,action):
