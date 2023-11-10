@@ -12,10 +12,10 @@ seeds = [8721, 5467, 1092, 9372,2801]
 
 trials = 5000
 t_print = 100
-save_file = True
+save_file = False
 
 # Set noise variables
-sensory_noises = torch.linspace(0.01,0.25,10)
+sensory_noises = torch.linspace(0.025,0.25,10)
 fixd_a_noise = 0.02 # set to experimental data value
 
 # Set update variables
@@ -34,6 +34,7 @@ model = Mot_model()
 
 for s in seeds:
     torch.manual_seed(s)
+    np.random.seed(s)
     for noise in sensory_noises:
         # Initialise differento components
         actor = Actor(action_s=1, ln_rate = a_ln_rate, trainable = True) # 1D environment

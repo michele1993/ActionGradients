@@ -15,17 +15,17 @@ torch.manual_seed(0)
 np.random.seed(0)
 seeds = [8721, 5467, 1092, 9372,2801]
 
-save = False
+save =False
 # Set noise variables
-sensory_noises = torch.linspace(0.01,0.25,10)
+sensory_noises = torch.linspace(0.025,0.25,10)
 fixd_a_noise = 0.02 # set to experimental data value
 
 # Set update variables
 a_ln_rate = 0.01
 model_ln_rate = 0.01
 beta = 0.5
-rbl_weight = [0.01, 0.01] #[1.5, 1.5]
-ebl_weight = [1,75] #[0.1, 0.1]
+rbl_weight = [1, 1] #[1.5, 1.5]
+ebl_weight = [1,1] #[0.1, 0.1]
 
 ## Generate N test targets between 38 and -38
 # since in Izawa's test based on pertub upto 8 degrees (and training was on max 30 degrees)
@@ -48,8 +48,8 @@ model = Mot_model()
 test_seed_acc = []
 test_seed_forward_acc = []
 EBL_test_seed_gradSim = []
-Mixed_test_seed_gradSim = []
-RBL_test_seed_gradSim = []
+#Mixed_test_seed_gradSim = []
+#RBL_test_seed_gradSim = []
 # Training statistics (based on loaded models and training targets)
 train_seed_acc = []
 train_seed_forward_acc = []
@@ -59,8 +59,8 @@ for s in seeds:
     test_noise_acc = []
     test_forward_noise_acc = []
     EBL_test_noise_grad_sim = []
-    Mixed_test_noise_grad_sim = []
-    RBL_test_noise_grad_sim = []
+    #Mixed_test_noise_grad_sim = []
+    #RBL_test_noise_grad_sim = []
     train_noise_acc = []
     train_forward_noise_acc = []
     train_noise_grad_sim = []
@@ -111,9 +111,9 @@ for s in seeds:
         true_EBL_grad = CAG.computeEBLGrad(y=true_y, est_y=true_y, action=action, mu_a=mu_a, std_a=std_a, delta_rwd=true_rwd)
 
         # Compute RBL grad
-        RBL_grad = CAG.computeRBLGrad(action, mu_a, std_a, delta_rwd)
+        #RBL_grad = CAG.computeRBLGrad(action, mu_a, std_a, delta_rwd)
 
-        Mixed_grad = beta * EBL_grad + (1-beta) * RBL_grad
+        #Mixed_grad = beta * EBL_grad + (1-beta) * RBL_grad
         #Mixed_grad = beta * EBL_grad/torch.norm(EBL_grad,dim=1,keepdim=True) + (1-beta) * RBL_grad/torch.norm(RBL_grad,dim=1,keepdim=True)
 
 
@@ -121,11 +121,11 @@ for s in seeds:
         EBL_grad_sim = cosine_sim(EBL_grad,true_EBL_grad) #Use cosine similarity since RBL and EBL 'cost' are different (i.e., RBL uses RPE)
         EBL_test_noise_grad_sim.append(EBL_grad_sim.item())
 
-        Mixed_grad_sim = cosine_sim(Mixed_grad,true_EBL_grad) #Use cosine similarity since RBL and EBL 'cost' are different (i.e., RBL uses RPE)
-        Mixed_test_noise_grad_sim.append(Mixed_grad_sim.item())
+        #Mixed_grad_sim = cosine_sim(Mixed_grad,true_EBL_grad) #Use cosine similarity since RBL and EBL 'cost' are different (i.e., RBL uses RPE)
+        #Mixed_test_noise_grad_sim.append(Mixed_grad_sim.item())
 
-        RBL_grad_sim = cosine_sim(RBL_grad,true_EBL_grad) #Use cosine similarity since RBL and EBL 'cost' are different (i.e., RBL uses RPE)
-        RBL_test_noise_grad_sim.append(RBL_grad_sim.item())
+        #RBL_grad_sim = cosine_sim(RBL_grad,true_EBL_grad) #Use cosine similarity since RBL and EBL 'cost' are different (i.e., RBL uses RPE)
+        #RBL_test_noise_grad_sim.append(RBL_grad_sim.item())
         ## =========================================================
 
         ## ========== Training performance with gradient ==================
@@ -165,8 +165,8 @@ for s in seeds:
     test_seed_acc.append(np.array(test_noise_acc))
     test_seed_forward_acc.append(np.array(test_forward_noise_acc))
     EBL_test_seed_gradSim.append(np.array(EBL_test_noise_grad_sim))
-    Mixed_test_seed_gradSim.append(np.array(Mixed_test_noise_grad_sim))
-    RBL_test_seed_gradSim.append(np.array(RBL_test_noise_grad_sim))
+    #Mixed_test_seed_gradSim.append(np.array(Mixed_test_noise_grad_sim))
+    #RBL_test_seed_gradSim.append(np.array(RBL_test_noise_grad_sim))
 
     # Store training statistics
     train_seed_acc.append(np.array(train_noise_acc))
@@ -177,8 +177,8 @@ for s in seeds:
 test_seed_acc = np.array(test_seed_acc)
 test_seed_forward_acc = np.array(test_seed_forward_acc)
 EBL_test_seed_gradSim = np.array(EBL_test_seed_gradSim)
-Mixed_test_seed_gradSim = np.array(Mixed_test_seed_gradSim)
-RBL_test_seed_gradSim = np.array(RBL_test_seed_gradSim)
+#Mixed_test_seed_gradSim = np.array(Mixed_test_seed_gradSim)
+#RBL_test_seed_gradSim = np.array(RBL_test_seed_gradSim)
 
 ## Select mean and std for corresponding values
 test_mean_seed_acc = test_seed_acc.mean(axis=0)
@@ -189,16 +189,16 @@ test_std_seed_forward_acc = test_seed_forward_acc.std(axis=0)
 
 EBL_test_mean_seed_gradSim = EBL_test_seed_gradSim.mean(axis=0)
 EBL_test_std_seed_gradSim = EBL_test_seed_gradSim.std(axis=0)
-Mixed_test_mean_seed_gradSim = Mixed_test_seed_gradSim.mean(axis=0)
-Mixed_test_std_seed_gradSim = Mixed_test_seed_gradSim.std(axis=0)
-RBL_test_mean_seed_gradSim = RBL_test_seed_gradSim.mean(axis=0)
-RBL_test_std_seed_gradSim = RBL_test_seed_gradSim.std(axis=0)
+#Mixed_test_mean_seed_gradSim = Mixed_test_seed_gradSim.mean(axis=0)
+#Mixed_test_std_seed_gradSim = Mixed_test_seed_gradSim.std(axis=0)
+#RBL_test_mean_seed_gradSim = RBL_test_seed_gradSim.mean(axis=0)
+#RBL_test_std_seed_gradSim = RBL_test_seed_gradSim.std(axis=0)
 ## =======================================
 
-#print('Test Mean error: ', test_mean_seed_acc,'\n')
-#print('Test Mean forward model error: ', test_mean_seed_forward_acc,'\n')
-#print('Test Mean EBL gradSim accuracy: ', EBL_test_mean_seed_gradSim,'\n')
-#print('Test std EBL gradSim accuracy: ', EBL_test_std_seed_gradSim,'\n')
+print('Test Mean error: ', test_mean_seed_acc,'\n')
+print('Test Mean forward model error: ', test_mean_seed_forward_acc,'\n')
+print('Test Mean EBL gradSim accuracy: ', EBL_test_mean_seed_gradSim,'\n')
+print('Test std EBL gradSim accuracy: ', EBL_test_std_seed_gradSim,'\n')
 #print('Test Mean Mixed gradSim accuracy: ', Mixed_test_mean_seed_gradSim,'\n')
 #print('Test std Mixed gradSim accuracy: ', Mixed_test_std_seed_gradSim/np.sqrt(5),'\n')
 #print('Test Mean RBL gradSim accuracy: ', RBL_test_mean_seed_gradSim,'\n')
@@ -226,7 +226,7 @@ train_strain_seed_gradSim = train_seed_gradSim.std(axis=0)
 #print('Train Mean gradSim: ', train_mean_seed_gradSim)
 
 ## ======= Save results ==============
-test_data = np.stack((test_seed_acc, test_seed_forward_acc, test_seed_gradSim),axis=0)
+test_data = np.stack((test_seed_acc, test_seed_forward_acc, EBL_test_seed_gradSim),axis=0)
 
 file_dir = os.path.dirname(os.path.abspath(__file__))
 file_dir = os.path.join(file_dir,'..','results','generalisation')

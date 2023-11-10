@@ -6,11 +6,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 from CombinedAG import CombActionGradient
 
+" Generate policy with minimal noise across betas to test generalisation performance"
 seeds = [8721, 5467, 1092, 9372,2801]
 
 trials = 20000
 t_print = 1000
-save_file = False
+save_file = True
 
 # Set noise variables
 sensory_noise = 0.01
@@ -37,8 +38,6 @@ for s in seeds:
         # Initialise differento components
         actor = Actor(action_s=1, ln_rate = a_ln_rate, trainable = True) # 1D environment
         estimated_model = Mot_model(ln_rate=model_ln_rate,lamb=None, Fixed = False)
-        print(estimated_model.model.weight)
-        exit()
         CAG = CombActionGradient(actor, b, rbl_weight, ebl_weight)
 
         tot_accuracy = []
