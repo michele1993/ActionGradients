@@ -18,7 +18,12 @@ class CombActionGradient:
         R_grad = self.computeRBLGrad(action, mu_a, std_a, delta_rwd)
         E_grad = self.computeEBLGrad(y, est_y, action, mu_a, std_a, delta_rwd)
 
-        comb_action_grad = self.beta * (self.ebl_weight * E_grad) + (1-self.beta) * (self.rbl_weight*R_grad) # Combine the two gradients
+        R_grad_norm = torch.norm(R_grad, dim=-1, keepdim=True)
+        E_grad_norm = torch.norm(E_grad, dim=-1, keepdim=True)
+
+        comb_action_grad = self.beta * (self.ebl_weight * E_grad/E_grad_norm) + (1-self.beta) * (self.rbl_weight*R_grad/R_grad_norm) # Combine the two gradients
+
+        comb_action_grad *= self.beta * E_grad_norm + (1-self.beta) * R_grad_norm
 
         action_variables = torch.cat([mu_a, std_a],dim=-1)
         agent_grad = self.actor.ActionGrad_update(comb_action_grad, action_variables)
@@ -40,7 +45,7 @@ class CombActionGradient:
         #Combine two grads relative to mu and std into one vector
         R_grad = torch.cat([R_dr_dmu_a, R_dr_dstd_a],dim=-1)
 
-        return R_grad
+        return R_grad 
     
     def computeEBLGrad(self, y, est_y, action, mu_a, std_a, delta_rwd):
         """Compute error-based learning (MBDPG) action gradient 
@@ -56,4 +61,4 @@ class CombActionGradient:
         #Combine two grads relative to mu and std into one vector
         E_grad = torch.cat([E_dr_dmu_a, E_dr_dstd_a],dim=-1)
 
-        return E_grad
+        return E_grad 

@@ -9,21 +9,23 @@ from CombinedAG import CombActionGradient
 " Generate policy with minimal noise across betas to test generalisation performance"
 seeds = [8721, 5467, 1092, 9372,2801]
 
-trials = 20000
+trials = 5000
 t_print = 1000
-save_file = True
+save_file = False
 
 # Set noise variables
 sensory_noise = 0.01
 fixd_a_noise = 0.02 # set to experimental data value
 
 # Set update variables
-a_ln_rate = 0.05
-c_ln_rate = 0.05
+a_ln_rate = 0.01
+c_ln_rate = 0.1
 model_ln_rate = 0.01
 betas = np.arange(0,11,1) /10.0
-rbl_weight = [0.01, 0.01] #[1.5, 1.5]
-ebl_weight = [1,75] #[0.1, 0.1]
+#rbl_weight = [0.01, 0.01] #[1.5, 1.5]
+#ebl_weight = [1,75] #[0.1, 0.1]
+rbl_weight = [1, 1] #[1.5, 1.5]
+ebl_weight = [1,1] #[0.1, 0.1]
 
 ## Peturbation:
 targets = [-30, -20, -10, 0, 10, 20, 30] # based on Izawa

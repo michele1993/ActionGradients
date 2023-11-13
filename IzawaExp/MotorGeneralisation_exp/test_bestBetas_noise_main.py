@@ -7,22 +7,24 @@ import matplotlib.pyplot as plt
 from CombinedAG import CombActionGradient
 from torchmetrics.regression import CosineSimilarity
 
-''' Code to analyse whether the EBL gradient computation in the presence of fixed amount of sensory noise can be improved by introducing the RBL gradient
+'''Analyse whether the EBL gradient computation in the presence of increasing amounts of sensory noise can be improved by adding the RBL gradient.
+We check this by computing what beta value gives the most accurate gradient across noise levels for a learned agent based on unseen targets (i.e., for adaptation to unseen targets)
+As the sensory_noise increase, smaller betas give better gradient estimates
 '''
 
 
 seeds = [8721, 5467, 1092, 9372,2801]
 
-save = True
+save = False
 # Set noise variables
-sensory_noise = torch.linspace(0.001,0.1,100)
+sensory_noise = torch.linspace(0.001,0.1,20)
 fixd_a_noise = 0.02 # set to experimental data value
 
 # Set update variables
 a_ln_rate = 0.01
 model_ln_rate = 0.01
 betas = torch.linspace(0,1,11)
-rbl_weight = [1, 1] #[1.5, 1.5]
+rbl_weight = [1,1] #[1.5, 1.5]
 ebl_weight = [1,1] #[0.1, 0.1]
 
 ## Generate N test targets between 38 and -38
@@ -32,10 +34,6 @@ max_val, min_val = 30,-30
 range_size = (max_val - min_val)  # 2
 test_targets = np.random.rand(N) * range_size + min_val
 test_y_star = torch.tensor(test_targets,dtype=torch.float32).unsqueeze(-1) * 0.0176
-
-# Define train targets
-train_targets = [-30, -20, -10, 0, 10, 20, 30] # based on Izawa
-train_y_star = torch.tensor(train_targets,dtype=torch.float32).unsqueeze(-1) * 0.0176
 
 # Define cosine similarity function to be used to compare gradients
 #cosine_sim = torch.nn.CosineSimilarity(dim=1)
@@ -47,17 +45,15 @@ seed_best_betas = []
 for s in seeds:
     torch.manual_seed(s)
     np.random.seed(s)
-    # Load Mixed policy trained with little noise 
+    # Load Mixed policy trained with minimal noise 
     file_dir = os.path.dirname(os.path.abspath(__file__))
-    #file_dir = os.path.join(file_dir,'results','Noisy_Forward',str(s))
-    #data = 'Noise_'+str(round(noise.item(),3))+'model.pt'
     file_dir = os.path.join(file_dir,'results',str(s))
     data = 'Mixed_0.5model.pt'
     model_dir = os.path.join(file_dir,data)
     models = torch.load(model_dir)
 
     # Initialise Actor
-    actor = Actor(action_s=1, ln_rate = a_ln_rate, trainable = True) # 1D environment
+    actor = Actor(action_s = 1, ln_rate = a_ln_rate, trainable = True) # 1D environment
     actor.load_state_dict(models['Actor'])
 
 
@@ -98,7 +94,6 @@ for s in seeds:
 
         # Compute estimated gradient 
         EBL_grad = CAG.computeEBLGrad(y,est_y,action,mu_a, std_a,delta_rwd) 
-        #EBL_grad += torch.randn_like(EBL_grad) * noise
 
         # Compute true gradient 
         true_EBL_grad = CAG.computeEBLGrad(y=true_y, est_y=true_y, action=action, mu_a=mu_a, std_a=std_a, delta_rwd=true_rwd) 
@@ -106,7 +101,8 @@ for s in seeds:
         # Compute RBL grad
         RBL_grad = CAG.computeRBLGrad(action, mu_a, std_a, delta_rwd)
 
-        # Compute Mixed grad for corresponding beta
+        # Compute direction of Mixed grad for corresponding beta
+        # NOTE: no need to scale by magnitude, since use cosine similarity
         betas_grad_sim = []
         for b in betas: 
             # To understand the gradient interactions need to normalise them
@@ -125,10 +121,11 @@ for s in seeds:
     seed_best_betas.append(np.array(best_betas))
 
 
-seed_best_betas = np.array(seed_best_betas)
+seed_best_betas = np.array(seed_best_betas) / 10
 mean_best_beta = seed_best_betas.mean(axis=0)
 std_best_beta = seed_best_betas.std(axis=0)
-data = np.stack((sensory_noise,mean_best_beta, std_best_beta))
+data = np.stack((sensory_noise, mean_best_beta, std_best_beta))
+print(mean_best_beta)
 ## ======= Save results ==============
 file_dir = os.path.dirname(os.path.abspath(__file__))
 file_dir = os.path.join(file_dir,'..','results','generalisation')

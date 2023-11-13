@@ -71,4 +71,4 @@ for d in results:
 
 ## SAVE: 1st figure
 #plt.savefig('/Users/px19783/Desktop/LinearMotorModel_trajectories', format='png', dpi=1200)
-#plt.show()
+plt.show()

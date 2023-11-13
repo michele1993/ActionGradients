@@ -6,6 +6,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from CombinedAG import CombActionGradient
 
+""" Load trained policy for each beta value and test generalisation performance """
+
 torch.manual_seed(0)
 seeds = [8721, 5467, 1092, 9372,2801]
 save = True
@@ -58,13 +60,15 @@ seed_acc = np.array(seed_acc)
 ## Select mean and std for corresponding values
 mean_seed_acc = seed_acc.mean(axis=0)
 std_seed_acc = seed_acc.std(axis=0)
-## Select values for beta=0,0.5,1 for plotting purposes
+## Select values for beta=0,0.3,1 for plotting purposes
+# mixed with beta =0.3 since this is what we plotted for motor variab
+# to match Izawa findings
 RBL_mean = mean_seed_acc[0]
-Mixed_mean = mean_seed_acc[4]
-EBL_mean = mean_seed_acc[10]
+Mixed_mean = mean_seed_acc[3]
+EBL_mean = mean_seed_acc[-1]
 RBL_std = std_seed_acc[0]
-Mixed_std = std_seed_acc[4]
-EBL_std = std_seed_acc[10]
+Mixed_std = std_seed_acc[3]
+EBL_std = std_seed_acc[-1]
 
 ## Save results
 tot_outcomes = [[RBL_mean,Mixed_mean,EBL_mean],[RBL_std,Mixed_std, EBL_std]]

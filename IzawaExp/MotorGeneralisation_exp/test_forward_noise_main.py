@@ -15,15 +15,15 @@ torch.manual_seed(0)
 np.random.seed(0)
 seeds = [8721, 5467, 1092, 9372,2801]
 
-save =False
+save = False
 # Set noise variables
-sensory_noises = torch.linspace(0.025,0.25,10)
+sensory_noises = torch.linspace(0.01,0.25,10)
 fixd_a_noise = 0.02 # set to experimental data value
 
 # Set update variables
 a_ln_rate = 0.01
 model_ln_rate = 0.01
-beta = 0.5
+beta = 1.0
 rbl_weight = [1, 1] #[1.5, 1.5]
 ebl_weight = [1,1] #[0.1, 0.1]
 

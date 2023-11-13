@@ -25,15 +25,17 @@ y_star = torch.tensor([target],dtype=torch.float32)
 
 # Set noise variables
 sensory_noise = 0.01
-fixd_a_noise = 0.025 # set to experimental data value
+fixd_a_noise = 0.02 # set to experimental data value
 
 # Set update variables
-a_ln_rate = 0.1
+a_ln_rate = 0.05
 c_ln_rate = 0.05
 model_ln_rate = 0.01
 betas = np.arange(0,11,1) /10.0
 rbl_weight = [0.01, 0.01]
-ebl_weight = [1, 75]
+ebl_weight = [5, 100]
+#rbl_weight = [1, 1]
+#ebl_weight = [1, 1]
 
 
 

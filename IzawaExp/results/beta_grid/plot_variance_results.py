@@ -41,8 +41,8 @@ EBL_mean_variability = mean_var[-1]
 EBL_std_variability = std_var[-1]
 
 ## Based on Izawa's results, use beta=0.3 
-Mixed_mean_variability = mean_var[2]
-Mixed_std_variability = std_var[2]
+Mixed_mean_variability = mean_var[3]
+Mixed_std_variability = std_var[3]
 
 RBL_mean_variability = mean_var[0]
 RBL_std_variability = std_var[0]
@@ -81,6 +81,6 @@ ax2[2].spines['top'].set_visible(False)
 ax2[2].set_ylabel('Generalisation error')
 
 
-#plt.show()
+plt.show()
 ## SAVE: figure
 #plt.savefig('/Users/px19783/Desktop/LinearMotorModel', format='png', dpi=1200)

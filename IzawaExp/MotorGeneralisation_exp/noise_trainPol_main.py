@@ -15,12 +15,12 @@ t_print = 100
 save_file = False
 
 # Set noise variables
-sensory_noises = torch.linspace(0.025,0.25,10)
+sensory_noises = torch.linspace(0.01,0.25,10)
 fixd_a_noise = 0.02 # set to experimental data value
 
 # Set update variables
-a_ln_rate = 0.05
-c_ln_rate = 0.05
+a_ln_rate = 0.01
+c_ln_rate = 0.1
 model_ln_rate = 0.01
 beta = 1 #np.arange(0,11,1) /10.0
 rbl_weight = [1, 1] #[1.5, 1.5]
