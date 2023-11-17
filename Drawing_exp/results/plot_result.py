@@ -5,8 +5,6 @@ import matplotlib as mpl
 
 file_dir = os.path.dirname(os.path.abspath(__file__))
 
-beta = 0.5
-error_dirs = ['RBL','Mixed_'+str(beta),'EBL']
 n_updates = 3
 n_seeds = 5
 ataxia_mean = []
@@ -33,7 +31,7 @@ plt.rcParams["font.family"] = "helvetica"
 mpl.rcParams['xtick.labelsize'] = font_s 
 mpl.rcParams['ytick.labelsize'] = font_s 
 
-fig, axs = plt.subplots(nrows=2, ncols=3, figsize=(7.5,3),
+fig, axs = plt.subplots(nrows=2, ncols=4, figsize=(7.5,3),
  gridspec_kw={'wspace': 0.35, 'hspace': 0.4, 'left': 0.07, 'right': 0.98, 'bottom': 0.15,
                                                'top': 0.9})
 

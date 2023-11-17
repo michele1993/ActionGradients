@@ -10,7 +10,7 @@ from CombinedAG import CombActionGradient
 
 torch.manual_seed(0)
 seeds = [8721, 5467, 1092, 9372,2801]
-save = True
+save = False
 # Set noise variables
 sensory_noise = 0.01
 fixd_a_noise = 0.02 # set to experimental data value
@@ -25,7 +25,7 @@ N = 100
 max_val, min_val = 30,-30
 range_size = (max_val - min_val)  # 2
 test_targets = np.random.rand(N) * range_size + min_val
-#test_targets = [-45 -35 -25, -15, -5, 5, 15, 25, 35 ,45]
+#test_targets = [-30, -20, -10, 0, 10, 20, 30]
 y_star = torch.tensor(test_targets,dtype=torch.float32).unsqueeze(-1) * 0.0176
 
 model = Mot_model()
@@ -43,32 +43,37 @@ for s in seeds:
 
         actor = Actor(action_s=1, ln_rate = a_ln_rate, trainable = True) # 1D environment
         actor.load_state_dict(models['Actor'])
+        #print('Beta: ', b)
+        #print(actor.l1.weight)
+        #print(actor.l1.weight,'\n')
+
 
         action, mu_a, std_a = actor.computeAction(y_star, fixd_a_noise)
 
         # Perform action in the env
-        true_y = model.step(action.detach())
-        #true_y = model.step(mu_a.detach())
+        #true_y = model.step(action.detach())
+        true_y = model.step(mu_a.detach())
 
         rwd = np.sqrt((true_y - y_star)**2) # it is actually a punishment
         betas_acc.append(rwd.mean())
 
-    seed_acc.append(np.array(betas_acc))
+    seed_acc.append(betas_acc)
 
 seed_acc = np.array(seed_acc)
 
 ## Select mean and std for corresponding values
 mean_seed_acc = seed_acc.mean(axis=0)
 std_seed_acc = seed_acc.std(axis=0)
-## Select values for beta=0,0.3,1 for plotting purposes
-# mixed with beta =0.3 since this is what we plotted for motor variab
+## Select values for beta=0,0.5,1 for plotting purposes
+# mixed with beta =0.5 since this is what we plotted for motor variab
 # to match Izawa findings
-RBL_mean = mean_seed_acc[0]
-Mixed_mean = mean_seed_acc[3]
-EBL_mean = mean_seed_acc[-1]
-RBL_std = std_seed_acc[0]
-Mixed_std = std_seed_acc[3]
-EBL_std = std_seed_acc[-1]
+RBL_mean = mean_seed_acc[0].squeeze()
+Mixed_mean = mean_seed_acc[5].squeeze()
+EBL_mean = mean_seed_acc[-1].squeeze()
+RBL_std = std_seed_acc[0].squeeze()
+Mixed_std = std_seed_acc[5].squeeze()
+EBL_std = std_seed_acc[-1].squeeze()
+
 
 ## Save results
 tot_outcomes = [[RBL_mean,Mixed_mean,EBL_mean],[RBL_std,Mixed_std, EBL_std]]

@@ -29,6 +29,7 @@ ebl_weight = [1,1] #[0.1, 0.1]
 
 ## Peturbation:
 targets = [-30, -20, -10, 0, 10, 20, 30] # based on Izawa
+#targets = [-1,0,1]
 y_star = torch.tensor(targets,dtype=torch.float32).unsqueeze(-1) * 0.0176
 
 model = Mot_model()

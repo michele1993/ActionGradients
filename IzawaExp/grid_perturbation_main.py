@@ -25,7 +25,7 @@ y_star = torch.tensor([target],dtype=torch.float32)
 
 # Set noise variables
 sensory_noise = 0.01
-fixd_a_noise = 0.02 # set to experimental data value
+fixd_a_noise = 0.019#0.02 # set to experimental data value
 
 # Set update variables
 a_ln_rate = 0.05
