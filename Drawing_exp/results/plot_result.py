@@ -36,9 +36,11 @@ fig, axs = plt.subplots(nrows=2, ncols=4, figsize=(7.5,3),
                                                'top': 0.9})
 
 conditions = ['RBL', 'Mixed', 'EBL']
+#colors = ['tab:red','tab:green','tab:blue']
 i=0
 for d in outcome_data:
     axs[0,i].plot(d[:,:,0],d[:,:,1])
+    #axs[0,i].plot(d[:,:,0],d[:,:,1], color=colors[i],alpha=0.5)
     # plot required adaptation
     #axs[i].plot(t,optimal_adaptation,c='yellow',linewidth=1)
     #axs[i].set_ylim([-10, 20])
@@ -100,4 +102,4 @@ axs[1,2].set_xlabel('episode x 100')
 axs[1,2].legend(loc='upper center', bbox_to_anchor=(0.5, 1), frameon=False, fontsize=font_s)#, ncol=5)
 
 plt.show()
-#plt.savefig('/Users/px19783/Desktop/LineDrawingResults', format='png', dpi=1200)
+#plt.savefig('/Users/px19783/Desktop/LineDrawingResults', format='png', dpi=1400)

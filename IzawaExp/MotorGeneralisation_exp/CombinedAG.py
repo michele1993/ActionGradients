@@ -51,8 +51,8 @@ class CombActionGradient:
         """Compute error-based learning (MBDPG) action gradient 
         NOTE: torch.with_nograd not required here since autograd.grad does not compute grad by default 
         """ 
-        # Take mean to compute grad across batch (it is okay since independent batches)
-        dr_dy = torch.autograd.grad(torch.mean(delta_rwd), y, retain_graph=True)[0] 
+        # Take sum to compute grad across batch (it is okay since independent batches)
+        dr_dy = torch.autograd.grad(torch.sum(delta_rwd), y, retain_graph=True)[0] 
 
         # NOTE: here I diff relative to det_a instead of action, should be the same (since sigma is fixed)
         E_dr_dmu_a = torch.autograd.grad(est_y,mu_a,grad_outputs=dr_dy, retain_graph=True)[0] 

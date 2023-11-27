@@ -31,7 +31,7 @@ class CombActionGradient:
     def computeEBLGrad(self, y, est_y, action, mu_a, std_a, delta_rwd):
         """Compute error-based learning (MBDPG) action gradient """
 
-        dr_dy = torch.autograd.grad(torch.mean(delta_rwd), y)[0] # take mean to compute grad across batch (it is okay since independent batches)
+        dr_dy = torch.autograd.grad(torch.sum(delta_rwd), y)[0] # take sum to compute grad across batch (it is okay since independent batches)
         # Compute grad relatice to mean and std of Gaussian policy
         dr_dy_dmu = torch.autograd.grad(est_y,mu_a,grad_outputs=dr_dy, retain_graph=True)[0] 
         dr_dy_dstd = torch.autograd.grad(est_y,std_a,grad_outputs=dr_dy, retain_graph=True)[0] 
@@ -40,3 +40,10 @@ class CombActionGradient:
         E_grad =  self.ebl_weight * torch.cat([dr_dy_dmu, dr_dy_dstd],dim=1)
 
         return E_grad
+
+    def compute_dyda(self, y, action):
+
+
+
+
+
