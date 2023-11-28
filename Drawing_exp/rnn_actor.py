@@ -32,7 +32,16 @@ class Actor(nn.Module):
         # Initialise initial hidden state
         self.init_states()
 
+        # Initialise weights
+        self.apply(self.small_weight_init)
+
     # Need to reset the hidden state at the end of each episode
+
+    def small_weight_init(self,l):
+        if isinstance(l,nn.Linear):
+            nn.init.normal_(l.weight,mean=0,std= 0.1)# std= 0.00005
+            nn.init.normal_(l.bias,mean=0,std= 0.1)# std= 0.00005
+
     def init_states(self):
         self.hidden_state = torch.zeros(self.num_layers, self.batch_size, self.hidden_size)
         self.contex_state = torch.zeros(self.num_layers, self.batch_size, self.hidden_size)

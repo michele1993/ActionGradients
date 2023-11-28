@@ -75,7 +75,7 @@ gen_dir = os.path.join(file_dir,'generalisation')
 stand_gen_file = os.path.join(gen_dir,'gener_results.npy')
 generalisation_res = np.load(stand_gen_file)
 gen_mean = np.flip(generalisation_res[0,:])
-gen_std = np.flip(generalisation_res[1,:])
+gen_std = np.flip(generalisation_res[1,:]) / normalising_sde
 
 ax2[0,2].errorbar(conditions, gen_mean, yerr=gen_std,capsize=3, fmt="o", ecolor = "black",markersize=4)
 ax2[0,2].spines['right'].set_visible(False)
@@ -120,14 +120,14 @@ sensory_noises = torch.linspace(0.01,0.25,10)
 ax2[1,1].errorbar(sensory_noises, mean_acc, yerr=std_acc, capsize=3, fmt="r--o", ecolor = "black",markersize=4)
 ax2[1,1].spines['right'].set_visible(False)
 ax2[1,1].spines['top'].set_visible(False)
-ax2[1,1].set_ylabel('Generalisation error')
+ax2[1,1].set_ylabel('EBL error')
 ax2[1,1].set_xlabel('Sensory noise')
 
 # Gradient Error
 ax2[1,2].errorbar(sensory_noises, mean_grad_acc, yerr=std_grad_acc, capsize=3, fmt="r--o", ecolor = "black",color='firebrick',markersize=4)
 ax2[1,2].spines['right'].set_visible(False)
 ax2[1,2].spines['top'].set_visible(False)
-ax2[1,2].set_ylabel('Action gradient error')
+ax2[1,2].set_ylabel('EBL gradient error')
 ax2[1,2].set_xlabel('Sensory noise')
 
 

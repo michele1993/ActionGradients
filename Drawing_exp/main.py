@@ -28,8 +28,8 @@ beta = args.beta
 step_x_update = args.step_x_update
 
     
-save_file = True
-n_episodes = 15000  # NOTE: For beta=0.5 use n_episodes=5000 (ie.early stopping) 
+save_file = False
+n_episodes = 10000  # 10000 NOTE: For beta=0.5 use n_episodes=5000 (ie.early stopping) 
 model_pretrain = 100
 grad_pretrain = model_pretrain * 1
 t_print = 100
@@ -42,9 +42,9 @@ fixd_a_noise = 0.0001 #.0002 # set to experimental data value
 
 # Set update variables
 assert beta >= 0 and beta <= 1, "beta must be between 0 and 1 (inclusive)"
-actor_lr_decay = 0.99
-gradModel_lr_decay = 0.9
-a_ln_rate = 0.0025 
+actor_lr_decay = 1#0.99
+gradModel_lr_decay = 1 #0.9
+a_ln_rate = 0.0025 #0.0025 
 c_ln_rate = 0.1
 model_ln_rate = 0.001
 grad_model_ln_rate = 0.001
@@ -83,7 +83,7 @@ for s in seeds:
 
     ## Initialise different componets
     estimated_model = ForwardModel(state_s=state_s,action_s=action_s, max_coord=large_circle_radium, ln_rate=model_ln_rate)
-    grad_estimator = GradientModel(state_s=state_s,action_s=action_s, ln_rate=grad_model_ln_rate, lr_decay= gradModel_lr_decay)
+    grad_estimator = GradientModel(action_s=action_s, n_state_s=state_s, ln_rate=grad_model_ln_rate, lr_decay= gradModel_lr_decay)
     actor = Actor(input_s= n_target_lines, batch_size=n_target_lines, ln_rate = a_ln_rate, learn_std=True,lr_decay=actor_lr_decay)
     CAG = CombActionGradient(actor, action_s, rbl_weight, ebl_weight)
 
@@ -123,6 +123,8 @@ for s in seeds:
         gradients = []
         action_variables = []
 
+        # reset LSTM states for each trial
+        actor.init_states()
         for t in range(n_steps):
             # Sample action from Gaussian policy
             action, mu_a, std_a = actor.computeAction(cue, fixd_a_noise)
@@ -156,30 +158,53 @@ for s in seeds:
                 # Compute gradients 
                 est_coord = estimated_model.step(state_action)  # re-estimate values since model has been updated
                 R_grad = CAG.computeRBLGrad(action, mu_a, std_a, delta_rwd)
-                E_grad = CAG.computeEBLGrad(y=coord, est_y=est_coord, action=action, mu_a=mu_a, std_a=std_a, delta_rwd=delta_rwd)
+                
+                # Cortex-dependent gradient:
+                dr_dy = CAG.compute_drdy(r=delta_rwd,y=coord).unsqueeze(1)
 
-                # Learn the EBL grad
-                c_target = torch.cat([x_targ[:,t:t+1], y_targ[:,t:t+1]],dim=-1).detach() 
-                est_E_grad = grad_estimator(state_action.detach(),c_target)
-                grad_loss = grad_estimator.update(E_grad, est_E_grad)
+                # ---- Cerebellum-dependent gradient: -----
+                # Compute estimated dy_da by differentiating through forward model:
+                dy_da = CAG.compute_dyda(y=est_coord, x=action)
 
-                ## ==== Diagnostic ====
-                #grad_model_loss.append(grad_loss.detach())
+                # Learn the dy/da
+                est_dy_da = grad_estimator(action.detach(),est_coord.detach()) # predict dy/da
+                grad_loss = grad_estimator.update(dy_da.view(n_target_lines,-1), est_dy_da)
 
-                # Use the estimated gradient for training Actor
-                E_grad = est_E_grad.detach() 
+                # Combine cerebellum and cortex gradients
+                dr_dy_da = (dr_dy @ est_dy_da.view(dy_da.size()))
+
+                ## ----- Interface to relate sampled actions to Gaussian policy variables (at the policy region) -----
+                #NOTE: since dim(a) >1 the following two derivatives are Jacobians
+                da_dmu = CAG.compute_da_dmu(action=action,mu=mu_a)
+                da_dstd = CAG.compute_da_dstd(action=action,std=std_a)
+
+                dr_dy_dmu = dr_dy_da @ da_dmu
+                dr_dy_dstd = dr_dy_da @ da_dstd
+
+                # NOTE: I have checked that this gives the correct gradient
+                E_grad = torch.cat([dr_dy_dmu, dr_dy_dstd],dim=-1).squeeze().detach()
 
                 # Store gradients
                 if ep > grad_pretrain:
-                    gradients.append(beta * torch.clip(E_grad,-5,5) + (1-beta) * torch.clip(R_grad,-5,5))
+
+                    R_grad_norm = torch.norm(R_grad, dim=-1, keepdim=True)
+                    E_grad_norm = torch.norm(E_grad, dim=-1, keepdim=True)
+
+                    # Combine the two gradients angles
+                    comb_action_grad = beta * E_grad/(E_grad_norm+1e-12) + (1-beta) * R_grad/(R_grad_norm +1e-12)
+
+                    # Combine the two gradients norms
+                    comb_action_grad *= beta * E_grad_norm + (1-beta) * R_grad_norm
+
+                    gradients.append(torch.clip(comb_action_grad,-5,5))
                     a_variab = torch.cat([mu_a,std_a],dim=1) 
                     action_variables.append(a_variab)
                     
                     # Store the gradient magnitude for plotting purposes
-                    norm_ebl_gradients.append(torch.norm(E_grad,dim=-1))
-                    norm_rbl_gradients.append(torch.norm(R_grad, dim=-1))
+                    norm_ebl_gradients.append(E_grad_norm)
+                    norm_rbl_gradients.append(R_grad_norm)
 
-                    # Store the gradient of policy mean  for plotting purposes
+                    # Store the (vector) gradient of policy mean  for plotting purposes
                     ebl_mu_gradients.append(torch.mean(E_grad[:,0:2],dim=0))
                     rbl_mu_gradients.append(torch.mean(R_grad[:,0:2], dim=0))
 
@@ -189,6 +214,7 @@ for s in seeds:
 
         if gradients: 
             actor.ActionGrad_update(torch.cat(gradients), torch.cat(action_variables))
+
 
         # Store variables after pre-train (including final trials without a perturbation)
         if ep % t_print ==0:

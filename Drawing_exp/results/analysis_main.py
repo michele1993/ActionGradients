@@ -20,13 +20,12 @@ args = parser.parse_args()
 
 step_x_update = args.step_x_update
 
-if step_x_update == 1:
-    seeds = [4634, 5637, 9920, 2310, 7169]
-else:
-    ## Last seed of above was exluced due to massime outliers on all conditions
-    seeds = [4634, 5637, 9920, 2310, 3021]
+seeds = [4634, 5637, 9920, 2310, 3021]
 
-betas = [0,0.5,1]
+if step_x_update == 1:
+    betas = [0,0.25,0.5,0.75,1]
+else:
+    betas = [0,0.75,1]
 
 save_results = True
 action_s = 2 # two angles in 2D kinematic arm model
@@ -117,12 +116,12 @@ for b in betas:
 
         ## Store trajectories for plotting based only on 1 seed
         ## averaging over seeds wouldn't be fair
-        if s ==9920:
+        if s ==2310:
             tot_trajects.append(outcomes)
 
         # Store gradient norm for mixed model across seeds
-        if b == 0.5:
-            RBL_grad, EBL_grad = np.load(os.path.join(seed_dir, 'Mixed_0.5_gradients.npy'))
+        if b == 0.75:
+            RBL_grad, EBL_grad = np.load(os.path.join(seed_dir, 'Mixed_0.75_gradients.npy'))
             tot_RBL_grad.append(RBL_grad)
             tot_EBL_grad.append(EBL_grad)
     

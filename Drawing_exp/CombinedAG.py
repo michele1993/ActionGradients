@@ -31,7 +31,7 @@ class CombActionGradient:
     def computeEBLGrad(self, y, est_y, action, mu_a, std_a, delta_rwd):
         """Compute error-based learning (MBDPG) action gradient """
 
-        dr_dy = torch.autograd.grad(torch.sum(delta_rwd), y)[0] # take sum to compute grad across batch (it is okay since independent batches)
+        dr_dy = torch.autograd.grad(torch.sum(delta_rwd), y, retain_graph=True)[0] # take sum to compute grad across batch (it is okay since independent batches)
         # Compute grad relatice to mean and std of Gaussian policy
         dr_dy_dmu = torch.autograd.grad(est_y,mu_a,grad_outputs=dr_dy, retain_graph=True)[0] 
         dr_dy_dstd = torch.autograd.grad(est_y,std_a,grad_outputs=dr_dy, retain_graph=True)[0] 
@@ -41,9 +41,35 @@ class CombActionGradient:
 
         return E_grad
 
-    def compute_dyda(self, y, action):
+    def compute_drdy(self, r, y):
+        return torch.autograd.grad(torch.sum(r), y, retain_graph=True)[0] # take sum to compute grad across batch (it is okay since independent batches)
 
+    def compute_dyda(self, y, x):
+        x_s = x.size()[-1]
+        batch_s, y_s = y.size()
+        Jacobian = torch.zeros(batch_s, y_s, x_s)
 
+        ## Compute Jacobian in naive way (i.e., using for loop) functorch API not so easily adaptable to 
+        for i in range(y_s):
+            Jacobian[:,i,:] = torch.autograd.grad(torch.sum(y[:,i]), x, retain_graph=True)[0]
 
+        return Jacobian
 
+    def compute_da_dmu(self, action, mu):
+        x_s = mu.size()[-1]
+        batch_s, a_s = action.size()
+        Jacobian = torch.zeros(batch_s, a_s, x_s)
+        ## Compute Jacobian in naive way (i.e., using for loop) functorch API not so easily adaptable to 
+        for i in range(a_s):
+            Jacobian[:,i,:] = torch.autograd.grad(torch.sum(action[:,i]), mu, retain_graph=True)[0]
+        return Jacobian
+
+    def compute_da_dstd(self, action, std):
+        x_s = std.size()[-1]
+        batch_s, a_s = action.size()
+        Jacobian = torch.zeros(batch_s, a_s, x_s)
+        ## Compute Jacobian in naive way (i.e., using for loop) functorch API not so easily adaptable to 
+        for i in range(a_s):
+            Jacobian[:,i,:] = torch.autograd.grad(torch.sum(action[:,i]), std, retain_graph=True)[0]
+        return Jacobian
 

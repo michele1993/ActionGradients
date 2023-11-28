@@ -12,6 +12,11 @@ from CombinedAG import CombActionGradient
 from utils import compute_targetLines
 import matplotlib as mpl
 
+""" 
+Load pre-trained policy in standard reaching and test how quickly it adapts to a 45' rotation perturbation, which is either applied all in 1 go or gradually
+over many trials (i.e., with 5' increments)
+"""
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--beta', '-b',type=float, nargs='?')

@@ -21,8 +21,10 @@ class CombActionGradient:
         R_grad_norm = torch.norm(R_grad, dim=-1, keepdim=True)
         E_grad_norm = torch.norm(E_grad, dim=-1, keepdim=True)
 
-        comb_action_grad = self.beta * (self.ebl_weight * E_grad/E_grad_norm) + (1-self.beta) * (self.rbl_weight*R_grad/R_grad_norm) # Combine the two gradients
+        # Combine the two gradients angles
+        comb_action_grad = self.beta * (self.ebl_weight * E_grad/E_grad_norm) + (1-self.beta) * (self.rbl_weight*R_grad/R_grad_norm) 
 
+        # Combine the two gradient norms
         comb_action_grad *= self.beta * E_grad_norm + (1-self.beta) * R_grad_norm
 
         action_variables = torch.stack([mu_a, std_a],dim=-1)
