@@ -35,7 +35,7 @@ y_star = torch.tensor([target],dtype=torch.float32)
 
 model = Mot_model()
 
-actor = Actor(output_s=2, ln_rate = a_ln_rate, trainable = True)
+actor = Actor(ln_rate = a_ln_rate, trainable = True)
 estimated_model = Mot_model(ln_rate=model_ln_rate,lamb=None, Fixed = False)
 
 CAG = CombActionGradient(actor, beta, rbl_weight, ebl_weight)

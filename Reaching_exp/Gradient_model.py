@@ -5,24 +5,22 @@ import torch.optim as opt
 
 class GradientModel(nn.Module):
 
-    def __init__(self,state_s, action_s, ln_rate = 1e-3, h_state=56, target_size=2, lr_decay=0.9):
+    def __init__(self, action_s, n_state_s, ln_rate = 1e-3, h_state=56, lr_decay=0.9):
 
         super().__init__()
 
-
-        self.l1 = nn.Linear(state_s+action_s+target_size,h_state) # takes the state, action and reward as input
-        self.l2 = nn.Linear(h_state,action_s*2) # need to multiply by 2 since have mean and std of Gaussian policy
+        self.l1 = nn.Linear(action_s+n_state_s,h_state) # takes the action and next state as input
+        self.l2 = nn.Linear(h_state,action_s*n_state_s) # predicts Jacobian dy/da
 
         self.optimiser = opt.Adam(self.parameters(), ln_rate)#, weight_decay=1e-3)
         self.scheduler = opt.lr_scheduler.ExponentialLR(self.optimiser,gamma=lr_decay)
 
-    def forward(self,state_action, target):
+    def forward(self,action, n_state):
 
-        x = torch.cat([state_action,target], dim=-1)
+        x = torch.cat([action, n_state], dim=-1)
         x = self.l1(x)
         x = torch.relu(x)
         x = self.l2(x)
-        #x = torch.tanh(x) #* 0.5
         return x
 
     def update(self, target_grad, est_grad):

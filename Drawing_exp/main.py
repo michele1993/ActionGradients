@@ -44,7 +44,7 @@ fixd_a_noise = 0.0001 #.0002 # set to experimental data value
 assert beta >= 0 and beta <= 1, "beta must be between 0 and 1 (inclusive)"
 actor_lr_decay = 1#0.99
 gradModel_lr_decay = 1 #0.9
-a_ln_rate = 0.0025 #0.0025 
+a_ln_rate = 0.0025 #0.0025 #0.0025 
 c_ln_rate = 0.1
 model_ln_rate = 0.001
 grad_model_ln_rate = 0.001
@@ -83,7 +83,7 @@ for s in seeds:
 
     ## Initialise different componets
     estimated_model = ForwardModel(state_s=state_s,action_s=action_s, max_coord=large_circle_radium, ln_rate=model_ln_rate)
-    grad_estimator = GradientModel(action_s=action_s, n_state_s=state_s, ln_rate=grad_model_ln_rate, lr_decay= gradModel_lr_decay)
+    cerebellum = GradientModel(action_s=action_s, n_state_s=state_s, ln_rate=grad_model_ln_rate, lr_decay= gradModel_lr_decay)
     actor = Actor(input_s= n_target_lines, batch_size=n_target_lines, ln_rate = a_ln_rate, learn_std=True,lr_decay=actor_lr_decay)
     CAG = CombActionGradient(actor, action_s, rbl_weight, ebl_weight)
 
@@ -111,6 +111,13 @@ for s in seeds:
 
     ## TRIAL: Try passing the cue to the gradient NN (assume memory)
     #target_cue = torch.eye(n_target_lines).unsqueeze(0) # each one-hot denotes different cue
+
+    ## ========== ADAM in action space =========
+    #b_1 = 0.1 #0.9
+    #b_2 = 0.999
+    #M=0
+    #R=0
+    ## =========================================
     for ep in range(1,n_episodes+1):
 
         # Initialise cues at start of each trial
@@ -167,8 +174,8 @@ for s in seeds:
                 dy_da = CAG.compute_dyda(y=est_coord, x=action)
 
                 # Learn the dy/da
-                est_dy_da = grad_estimator(action.detach(),est_coord.detach()) # predict dy/da
-                grad_loss = grad_estimator.update(dy_da.view(n_target_lines,-1), est_dy_da)
+                est_dy_da = cerebellum(action.detach(),est_coord.detach()) # predict dy/da
+                grad_loss = cerebellum.update(dy_da.view(n_target_lines,-1), est_dy_da)
 
                 # Combine cerebellum and cortex gradients
                 dr_dy_da = (dr_dy @ est_dy_da.view(dy_da.size()))
@@ -196,6 +203,17 @@ for s in seeds:
                     # Combine the two gradients norms
                     comb_action_grad *= beta * E_grad_norm + (1-beta) * R_grad_norm
 
+                    ## ====== TRY: ADAM in action space: ======
+                    #M = b_1 * M + (1-b_2) * comb_action_grad
+                    #R = b_2 * R + (1-b_2) * comb_action_grad**2
+                    #M_hat = M/(1 -(b_1)**action_s)
+                    #R_hat = R/(1 -(b_2)**action_s)
+                    #comb_action_grad = M_hat / torch.sqrt(R_hat+ 10e-8)
+                    #comb_action_grad /= torch.sqrt(R_hat+ 10e-8) # WORK better
+                    #M = torch.mean(M, dim=0, keepdim=True)
+                    #R = torch.mean(R, dim=0, keepdim=True)
+                    ## =======================================
+
                     gradients.append(torch.clip(comb_action_grad,-5,5))
                     a_variab = torch.cat([mu_a,std_a],dim=1) 
                     action_variables.append(a_variab)
@@ -220,8 +238,8 @@ for s in seeds:
         if ep % t_print ==0:
             accuracy = sum(trial_acc) / len(trial_acc)
             m_loss = sum(model_losses) / len(model_losses)
-            #print("ep: ",ep)
-            #print("accuracy: ",accuracy)
+            print("ep: ",ep)
+            print("accuracy: ",accuracy)
             #print("std_a: ", std_a)
             #print("Model Loss: ", m_loss)
             tot_accuracy.append(accuracy)
@@ -232,7 +250,7 @@ for s in seeds:
             if norm_ebl_gradients:
                 ## Update learning rate:
                 actor.scheduler.step()
-                grad_estimator.scheduler.step()
+                cerebellum.scheduler.step()
 
                 ## Store the norm of each action gradient
                 norm_ebl_gradients = torch.cat(norm_ebl_gradients).mean()

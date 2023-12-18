@@ -31,19 +31,32 @@ plt.rcParams["font.family"] = "helvetica"
 mpl.rcParams['xtick.labelsize'] = font_s 
 mpl.rcParams['ytick.labelsize'] = font_s 
 
-fig, axs = plt.subplots(nrows=2, ncols=5, figsize=(7.5,3),
- gridspec_kw={'wspace': 0.35, 'hspace': 0.7, 'left': 0.07, 'right': 0.98, 'bottom': 0.15,
+fig, axs = plt.subplots(nrows=2, ncols=5, figsize=(8,3),
+ gridspec_kw={'wspace': 0.45, 'hspace': 0.7, 'left': 0.07, 'right': 0.98, 'bottom': 0.15,
                                                'top': 0.9})
+## Plot training accuracy
+train_acc_file = os.path.join(file_dir,str(update)+'_update','Mean_training_betas_acc.npy')
+mean_train_acc = np.load(train_acc_file) # [betas, mean_train_acc]
 
+t = np.arange(0,10000,100)
+for acc in mean_train_acc:
+    axs[0,0].plot(t,acc)
+
+axs[0,0].spines['right'].set_visible(False)
+axs[0,0].spines['top'].set_visible(False)
+axs[0,0].set_ylabel('Training accuracy')
+axs[0,0].set_xlabel('Training episodes')
+
+## Plot Ataxia scores across betas
 conditions = ['0%', '25%','50%','75%', '100%']
 colors = ['tab:blue','tab:green','tab:orange']
 
-axs[0,0].bar(conditions,ataxia_mean[0],align='center', alpha=0.8,ecolor='black', capsize=5, color=colors,edgecolor=None)
-axs[0,0].errorbar(conditions,ataxia_mean[0], yerr=ataxia_se[0], ls='none', color='black',  elinewidth=1, capsize=1.5) # ecolor='lightslategray',
-axs[0,0].spines['right'].set_visible(False)
-axs[0,0].spines['top'].set_visible(False)
-axs[0,0].set_ylabel('Ataxia score')
-axs[0,0].legend(loc='upper center', bbox_to_anchor=(0.5, 1), frameon=False, fontsize=font_s)#, ncol=5)
+axs[0,1].bar(conditions,ataxia_mean[0],align='center', alpha=0.8,ecolor='black', capsize=5, color=colors,edgecolor=None)
+axs[0,1].errorbar(conditions,ataxia_mean[0], yerr=ataxia_se[0], ls='none', color='black',  elinewidth=1, capsize=1.5) # ecolor='lightslategray',
+axs[0,1].spines['right'].set_visible(False)
+axs[0,1].spines['top'].set_visible(False)
+axs[0,1].set_ylabel('Ataxia score')
+axs[0,1].legend(loc='upper center', bbox_to_anchor=(0.4, 1), frameon=False, fontsize=font_s)#, ncol=5)
 #axs[0,0].set_xlabel('CB contribution')
 
 ## Plot ataxia changes by temporal sensory feedback
@@ -58,20 +71,20 @@ i=0
 #updt_ataxia_se = np.array([ataxia_se_1, ataxia_se[1:]])
 for m,s in zip(ataxia_mean, ataxia_se):
     if i ==0:
-        axs[0,1].errorbar(updt_conditions[i,0],m[0], yerr=s[0], label='RBL', capsize=3, fmt="r--o",markerfacecolor=colors[0],markeredgecolor=colors[0],c='black',elinewidth=1,alpha=0.8)
-        axs[0,1].errorbar(updt_conditions[i,1],m[3], yerr=s[3], label='Mixed', capsize=3, fmt="r--o",markerfacecolor=colors[1],markeredgecolor=colors[1],c='black',elinewidth=1,alpha=0.8)
-        axs[0,1].errorbar(updt_conditions[i,2],m[4], yerr=s[4], label='EBL', capsize=3, fmt="r--o",markerfacecolor=colors[2],markeredgecolor=colors[2],c='black',elinewidth=1,alpha=0.8)
+        axs[0,2].errorbar(updt_conditions[i,0],m[0], yerr=s[0], label='RBL', capsize=3, fmt="r--o",markerfacecolor=colors[0],markeredgecolor=colors[0],c='black',elinewidth=1,alpha=0.8)
+        axs[0,2].errorbar(updt_conditions[i,1],m[3], yerr=s[3], label='Mixed', capsize=3, fmt="r--o",markerfacecolor=colors[1],markeredgecolor=colors[1],c='black',elinewidth=1,alpha=0.8)
+        axs[0,2].errorbar(updt_conditions[i,2],m[4], yerr=s[4], label='EBL', capsize=3, fmt="r--o",markerfacecolor=colors[2],markeredgecolor=colors[2],c='black',elinewidth=1,alpha=0.8)
     else:
-        axs[0,1].errorbar(updt_conditions[i,0],m[0], yerr=s[0], capsize=3, fmt="r--o",markerfacecolor=colors[0],markeredgecolor=colors[0],c='black',elinewidth=1,alpha=0.8)
-        axs[0,1].errorbar(updt_conditions[i,1],m[1], yerr=s[1], capsize=3, fmt="r--o",markerfacecolor=colors[1],markeredgecolor=colors[1],c='black',elinewidth=1,alpha=0.8)
-        axs[0,1].errorbar(updt_conditions[i,2],m[2], yerr=s[2], capsize=3, fmt="r--o",markerfacecolor=colors[2],markeredgecolor=colors[2],c='black',elinewidth=1,alpha=0.8)
+        axs[0,2].errorbar(updt_conditions[i,0],m[0], yerr=s[0], capsize=3, fmt="r--o",markerfacecolor=colors[0],markeredgecolor=colors[0],c='black',elinewidth=1,alpha=0.8)
+        axs[0,2].errorbar(updt_conditions[i,1],m[1], yerr=s[1], capsize=3, fmt="r--o",markerfacecolor=colors[1],markeredgecolor=colors[1],c='black',elinewidth=1,alpha=0.8)
+        axs[0,2].errorbar(updt_conditions[i,2],m[2], yerr=s[2], capsize=3, fmt="r--o",markerfacecolor=colors[2],markeredgecolor=colors[2],c='black',elinewidth=1,alpha=0.8)
     i+=1
 
-axs[0,1].spines['right'].set_visible(False)
-axs[0,1].spines['top'].set_visible(False)
-axs[0,1].set_xlabel('sensory temporal feedback')
-axs[0,1].set_ylabel('Ataxia score')
-axs[0,1].legend(loc='upper center', bbox_to_anchor=(0.25, 1.05), frameon=False, fontsize=font_s)#, ncol=5)
+axs[0,2].spines['right'].set_visible(False)
+axs[0,2].spines['top'].set_visible(False)
+axs[0,2].set_xlabel('sensory temporal feedback')
+axs[0,2].set_ylabel('Accuracy')
+axs[0,2].legend(loc='upper center', bbox_to_anchor=(0.24, 1.05), frameon=False, fontsize=font_s)#, ncol=5)
 
 
 ## Plot training gradients for Mixed condition only for n_update_x_step = 1
@@ -83,18 +96,18 @@ EBL_grad = mixedModel_norm_grad[1,:]
 #EBL_grad /= np.max(EBL_grad)
 
 t = np.arange(1,len(RBL_grad)+1)
-axs[0,2].plot(t,RBL_grad,label='RBL',c=colors[0],alpha=0.8)
-axs[0,2].spines['right'].set_visible(False)
-axs[0,2].spines['top'].set_visible(False)
-axs[0,2].set_ylabel('Gradient norm')
-axs[0,2].set_xlabel('episode x 100')
-#axs[0,2].legend(loc='upper center', bbox_to_anchor=(0.5, 1), frameon=False, fontsize=font_s)#, ncol=5)
-
-axs[0,3].plot(t,EBL_grad,label='EBL',c=colors[1],alpha=0.8)
+axs[0,3].plot(t,RBL_grad,label='RBL',c=colors[0],alpha=0.8)
 axs[0,3].spines['right'].set_visible(False)
 axs[0,3].spines['top'].set_visible(False)
-#axs[0,3].set_ylabel('Gradient norm')
+axs[0,3].set_ylabel('Gradient norm')
 axs[0,3].set_xlabel('episode x 100')
+#axs[0,2].legend(loc='upper center', bbox_to_anchor=(0.5, 1), frameon=False, fontsize=font_s)#, ncol=5)
+
+axs[0,4].plot(t,EBL_grad,label='EBL',c=colors[1],alpha=0.8)
+axs[0,4].spines['right'].set_visible(False)
+axs[0,4].spines['top'].set_visible(False)
+#axs[0,3].set_ylabel('Gradient norm')
+axs[0,4].set_xlabel('episode x 100')
 #axs[0,3].legend(loc='upper center', bbox_to_anchor=(0.5, 1), frameon=False, fontsize=font_s)#, ncol=5)
 
 i=0

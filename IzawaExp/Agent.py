@@ -4,15 +4,14 @@ import torch.optim as opt
 
 class Actor(nn.Module):
 
-    def __init__(self,tot_a=1,input_s=1,output_s=2,ln_rate = 1e-3, trainable = True, opt_type='Adam'):
+    def __init__(self,input_s=1,action_s=1,ln_rate = 1e-3, trainable = True, opt_type='Adam'):
 
         super().__init__()
 
-        self.tot_a = tot_a
         # Maintain two separate sets of weights for the mean and std of the Gaussian policy
         # So can initialise them with two different scales
-        self.l1 = nn.Linear(input_s,output_s //2)
-        self.l2 = nn.Linear(input_s, output_s //2)
+        self.l1 = nn.Linear(input_s, action_s)
+        self.l2 = nn.Linear(input_s, action_s)
 
 
         # Initialise network with small weights
@@ -31,10 +30,9 @@ class Actor(nn.Module):
                 p.requires_grad = False
 
     def forward(self,y_star):
-
         x_1 = self.l1(y_star)
         x_2 = self.l2(y_star)
-        return torch.cat([x_1,x_2])
+        return x_1,x_2
     
     def computeAction(self, y_star, fixd_a_noise):
 
@@ -48,7 +46,7 @@ class Actor(nn.Module):
         action_std = std_a + fixd_a_noise 
 
         # Sample Gaussian perturbation
-        a_noise = torch.randn(1) * action_std 
+        a_noise = torch.randn_like(mu_a) * action_std 
 
         # Compute action from sampled Gaussian policy
         return mu_a + a_noise, mu_a, action_std

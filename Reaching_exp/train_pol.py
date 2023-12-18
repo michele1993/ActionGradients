@@ -15,13 +15,13 @@ import matplotlib as mpl
 
 
 # Train a model with mixed grad
-beta = 0.5
+beta = 1
 
-    
-torch.manual_seed(94747)
-np.random.seed(94747)
+seed = 91726 #94747    
+torch.manual_seed(seed) 
+np.random.seed(seed)
 save_file = False
-n_trials = 2500
+n_trials = 5000
 model_pretrain = 100
 grad_pretrain = model_pretrain * 1
 t_print = 100
@@ -36,7 +36,7 @@ fixd_a_noise = 0.001 #.0002 # set to experimental data value
 assert beta >= 0 and beta <= 1, "beta must be between 0 and 1 (inclusive)"
 gradModel_lr_decay = 1
 actor_lr_decay = 1
-a_ln_rate = 0.001
+a_ln_rate = 0.0005 #0.001
 c_ln_rate = 0.05
 model_ln_rate = 0.001
 grad_model_ln_rate = 0.001
@@ -76,7 +76,7 @@ y_targ = y_targ[:,-1:]
 
 ## ==== Initialise components ==========
 estimated_model = ForwardModel(state_s=state_s,action_s=action_s, max_coord=large_circle_radium, ln_rate=model_ln_rate)
-grad_estimator = GradientModel(state_s=state_s,action_s=action_s, ln_rate=grad_model_ln_rate, lr_decay= gradModel_lr_decay)
+cerebellum = GradientModel(action_s=action_s, n_state_s=state_s, ln_rate=grad_model_ln_rate, lr_decay= gradModel_lr_decay)
 actor = Actor(input_s= n_target_lines, ln_rate = a_ln_rate, learn_std=True,lr_decay=actor_lr_decay)
 CAG = CombActionGradient(actor, action_s, rbl_weight, ebl_weight)
 
@@ -135,6 +135,7 @@ for t in range(1,n_trials+1):
     
     ## ====== Use running average to compute RPE =======
     delta_rwd = rwd - mean_rwd 
+    #delta_rwd = true_rwd - mean_rwd 
     mean_rwd += c_ln_rate * delta_rwd.detach()
     ## ==============================================
 
@@ -148,28 +149,50 @@ for t in range(1,n_trials+1):
         # Compute gradients 
         est_coord = estimated_model.step(state_action)  # re-estimate values since model has been updated
         R_grad = CAG.computeRBLGrad(action, mu_a, std_a, delta_rwd)
-        E_grad = CAG.computeEBLGrad(y=coord, est_y=est_coord, action=action, mu_a=mu_a, std_a=std_a, delta_rwd=delta_rwd)
 
-        # Learn the EBL grad
-        c_target = torch.cat([x_targ, y_targ],dim=-1).detach() 
-        est_E_grad = grad_estimator(state_action.detach(),c_target)
-        grad_loss = grad_estimator.update(E_grad, est_E_grad)
-        grad_model_loss.append(grad_loss.detach())
+        # Cortex-dependent gradient:
+        dr_dy = CAG.compute_drdy(r=rwd,y=coord).unsqueeze(1)
 
-        # Use the estimated gradient for training Actor
-        E_grad = est_E_grad.detach() 
+        # ---- Cerebellum-dependent gradient: -----
+        # Compute estimated dy_da by differentiating through forward model:
+        dy_da = CAG.compute_dyda(y=est_coord, x=action)
+
+        # Learn the dy/da
+        est_dy_da = cerebellum(action.detach(),est_coord.detach()) # predict dy/da
+        grad_loss = cerebellum.update(dy_da.view(n_target_lines,-1), est_dy_da)
+
+        # Combine cerebellum and cortex gradients
+        dr_dy_da = (dr_dy @ est_dy_da.view(dy_da.size()))
+
+        ## ----- Interface to relate sampled actions to Gaussian policy variables (at the policy region) -----
+        #NOTE: since dim(a) >1 the following two derivatives are Jacobians
+        da_dmu = CAG.compute_da_dmu(action=action,mu=mu_a)
+        da_dstd = CAG.compute_da_dstd(action=action,std=std_a)
+
+        dr_dy_dmu = dr_dy_da @ da_dmu
+        dr_dy_dstd = dr_dy_da @ da_dstd
+
+        # NOTE: I have checked that this gives the correct gradient
+        E_grad = torch.cat([dr_dy_dmu, dr_dy_dstd],dim=-1).squeeze().detach()
 
         # Store gradients
         if t > grad_pretrain:
-            #gradient = beta * torch.clip(E_grad,-5,5) + (1-beta) * torch.clip(R_grad,-5,5)
-            gradient = beta * E_grad + (1-beta) * R_grad
+            R_grad_norm = torch.norm(R_grad, dim=-1, keepdim=True)
+            E_grad_norm = torch.norm(E_grad, dim=-1, keepdim=True)
+
+            # Combine the two gradients angles
+            comb_action_grad = beta * E_grad/(E_grad_norm+1e-12) + (1-beta) * R_grad/(R_grad_norm +1e-12)
+
+            # Combine the two gradients norms
+            comb_action_grad *= beta * E_grad_norm + (1-beta) * R_grad_norm
+
             a_variab = torch.cat([mu_a,std_a],dim=1) 
 
-            actor.ActionGrad_update(gradient, a_variab)
+            actor.ActionGrad_update(comb_action_grad, a_variab)
             
             # Store the gradient magnitude for plotting purposes
-            norm_ebl_gradients.append(torch.norm(E_grad,dim=-1))
-            norm_rbl_gradients.append(torch.norm(R_grad, dim=-1))
+            norm_ebl_gradients.append(R_grad_norm)
+            norm_rbl_gradients.append(E_grad_norm)
 
             # Store the gradient of policy mean  for plotting purposes
             ebl_mu_gradients.append(torch.mean(E_grad[:,0:2],dim=0))
@@ -220,6 +243,6 @@ if save_file:
         'Net_optim': actor.optimizer.state_dict(),
         'Est_model': estimated_model.state_dict(),
         'Model_optim': estimated_model.optimiser.state_dict(),
-        'Grad_model': grad_estimator.state_dict(),
-        'Grad_model_optim': grad_estimator.optimiser.state_dict(),
+        'Grad_model': cerebellum.state_dict(),
+        'Grad_model_optim': cerebellum.optimiser.state_dict(),
     }, model_dir)

@@ -32,6 +32,8 @@ class Actor(nn.Module):
     def forward(self,x):
 
         x = self.l1(x)
+        print(" CHECK ACTOR LINE 34, NO RELU USED !!!")
+        exit()
         output = self.l2(x)
 
         if self.learn_std:

@@ -54,7 +54,7 @@ for s in seeds:
     os.makedirs(acc_dir, exist_ok=True)
     for beta in betas:
         ## Reinitialise all the models for each run with a different beta
-        actor = Actor(output_s=2, ln_rate = a_ln_rate, trainable = True, opt_type='SGD')
+        actor = Actor(ln_rate = a_ln_rate, trainable = True, opt_type='SGD')
         actor.load_state_dict(models['Actor'])
         estimated_model = Mot_model(ln_rate=model_ln_rate,lamb=None,Fixed=False)
         estimated_model.load_state_dict(models['Est_model'])
