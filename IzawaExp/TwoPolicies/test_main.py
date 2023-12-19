@@ -8,13 +8,14 @@ import numpy as np
 from CombinedAG import CombActionGradient
 
 
-""" Train two separate policies whose outputs are summed, one with EBL and the other with RBL"""
+""" Check how sum of a trained RBL poliy performs when sensory info becames available (suddenly or gradually) introducing the contribution of a trained EBL policy""" 
+
 seeds = [8271, 1841, 5631, 9621, 8501]
 initial_beta = 0 # load a policy that is assumed to be trained with RBL (i.e., only rewards available)
-sudden = False # sudden change in visual feedback
-trials = 100
-initial_trials = 20
-t_print = 1
+sudden = True # sudden change in visual feedback
+trials = 1000
+initial_trials = 200
+t_print = 10
 save_file = False
 
 # Set noise variables
@@ -32,7 +33,6 @@ target = 0.1056 # target angle : 6 degrees - Izawa and Shadmer, 2011
 y_star = torch.tensor([target],dtype=torch.float32)
 
 # Load models
-# Load models
 if initial_beta ==0:
     data = 'RBL_'
 elif initial_beta ==1:    
@@ -43,7 +43,8 @@ else:
 
 file_dir = os.path.dirname(os.path.abspath(__file__))
 file_dir = os.path.join(file_dir,'results') # For the mixed model
-model_dir = os.path.join(file_dir,'data',data+'model.pt') # For the mixed model
+# Load pretrained agent from 1st seed only
+model_dir = os.path.join(file_dir,str(0),data+'model.pt') # For the mixed model
 models = torch.load(model_dir)
 
 tot_accuracy = []
@@ -62,6 +63,7 @@ for s in seeds:
 
     mean_rwd = 0
     trial_acc = []
+    ep_acc = [] 
     beta = initial_beta
     for ep in range(1,trials+1):
 
@@ -92,19 +94,24 @@ for s in seeds:
         mean_rwd += c_ln_rate * delta_rwd.detach()
         ## ==============================================
 
-
         # Update actor based on combined action gradient
-        rbl_grad = CAG.computeRBLGrad(rbl_a,rbl_mu,rbl_std,delta_rwd)
-        ebl_grad = CAG.computeEBLGrad(y,y,action,ebl_mu,ebl_std, rwd)
+        if ep > initial_trials:
+            rbl_grad = CAG.computeRBLGrad(rbl_a,rbl_mu,rbl_std,delta_rwd)
+            ebl_grad = CAG.computeEBLGrad(y,y,action,ebl_mu,ebl_std, rwd)
 
-        rbl_a_variables = torch.stack([rbl_mu, rbl_std],dim=-1)
-        rbl_actor.ActionGrad_update(rbl_grad, rbl_a_variables)
+            rbl_a_variables = torch.cat([rbl_mu, rbl_std],dim=-1)
+            rbl_actor.ActionGrad_update(rbl_grad, rbl_a_variables)
 
-        ebl_a_variables = torch.stack([ebl_mu, ebl_std],dim=-1)
-        ebl_actor.ActionGrad_update(ebl_grad, ebl_a_variables)
+            ebl_a_variables = torch.cat([ebl_mu, ebl_std],dim=-1)
+            ebl_actor.ActionGrad_update(ebl_grad, ebl_a_variables)
+
+        if ep % t_print ==0:
+            ep_acc.append(sum(trial_acc)/len(trial_acc))
+            trial_acc = []
 
     # Store Accuracy for each seed
-    tot_accuracy.append(trial_acc)
+    tot_accuracy.append(ep_acc)
+    ep_acc = []
 
 tot_accuracy = np.array(tot_accuracy)
 

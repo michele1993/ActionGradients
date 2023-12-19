@@ -27,7 +27,7 @@ class CombActionGradient:
         # Combine the two gradient norms
         comb_action_grad *= self.beta * E_grad_norm + (1-self.beta) * R_grad_norm
 
-        action_variables = torch.stack([mu_a, std_a],dim=-1)
+        action_variables = torch.cat([mu_a, std_a],dim=-1)
         agent_grad = self.actor.ActionGrad_update(comb_action_grad, action_variables)
 
         return comb_action_grad
@@ -61,6 +61,6 @@ class CombActionGradient:
         E_dr_dstd_a = torch.autograd.grad(est_y,std_a,grad_outputs=dr_dy, retain_graph=True)[0] 
 
         #Combine two grads relative to mu and std into one vector
-        E_grad = torch.stack([E_dr_dmu_a, E_dr_dstd_a],dim=-1)
+        E_grad = torch.cat([E_dr_dmu_a, E_dr_dstd_a],dim=-1)
 
         return E_grad 
