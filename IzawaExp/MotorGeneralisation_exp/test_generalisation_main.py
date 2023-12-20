@@ -24,8 +24,8 @@ betas = np.arange(0,11,1) /10.0
 N = 100
 max_val, min_val = 30,-30
 range_size = (max_val - min_val)  # 2
-test_targets = np.random.rand(N) * range_size + min_val
-#test_targets = [-30, -20, -10, 0, 10, 20, 30]
+#test_targets = np.random.rand(N) * range_size + min_val
+test_targets = [-30, -20, -10, 0, 10, 20, 30]
 y_star = torch.tensor(test_targets,dtype=torch.float32).unsqueeze(-1) * 0.0176
 
 model = Mot_model()
@@ -73,7 +73,6 @@ EBL_mean = mean_seed_acc[-1].squeeze()
 RBL_std = std_seed_acc[0].squeeze()
 Mixed_std = std_seed_acc[5].squeeze()
 EBL_std = std_seed_acc[-1].squeeze()
-
 
 ## Save results
 tot_outcomes = [[RBL_mean,Mixed_mean,EBL_mean],[RBL_std,Mixed_std, EBL_std]]

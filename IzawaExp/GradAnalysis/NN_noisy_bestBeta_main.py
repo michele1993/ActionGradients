@@ -10,9 +10,9 @@ from NN_CombinedAG import CombActionGradient
 
 seeds = [3009, 5467, 1092, 9372,2801]
 
-trials = 5000
+trials = 5001
 t_print = 250
-save_file = False
+save_file = True
 
 ## set dimension
 action_s = 10
@@ -33,6 +33,7 @@ betas = [0, 0.25, 0.5, 0.75, 1] #np.arange(0,11,2) /10.0 # [0,0.5,1]
 cue = torch.eye(n_targets,n_targets)
 
 seed_best_betas = []
+seed_best_betas.append(sensory_noises)
 for s in seeds:
     torch.manual_seed(s)
     np.random.seed(s)
@@ -115,23 +116,18 @@ for s in seeds:
         print("Noise level: ",noise, "Best beta: ", best_betas[-1],'\n') 
     seed_best_betas.append(np.array(best_betas))
 
+seed_best_betas = np.array(seed_best_betas,dtype=object)
 ## ===== Save results =========
 # Create directory to store results
 file_dir = os.path.dirname(os.path.abspath(__file__))
-file_dir = os.path.join(file_dir,'results','Noisy_Forward',str(s))
+file_dir = os.path.join(file_dir,'results')
 # Create directory if it did't exist before
 os.makedirs(file_dir, exist_ok=True)
 
 # Store model
-data = 'Noise_'+str(round(noise.item(),3))+'model.pt'
-model_dir = os.path.join(file_dir,data)
+data = 'BestBeta_sensory_noise.npy'
+
+BestB_dir = os.path.join(file_dir,data)
 
 if save_file:
-    torch.save({
-        "Targets": targets,
-        'Actor': actor.state_dict(),
-        'Net_optim': actor.optimiser.state_dict(),
-        'Mean_rwd': mean_rwd,
-        'Est_model': estimated_model.state_dict(),
-        'Model_optim': estimated_model.optimiser.state_dict(),
-    }, model_dir)
+    np.save(BestB_dir,seed_best_betas)

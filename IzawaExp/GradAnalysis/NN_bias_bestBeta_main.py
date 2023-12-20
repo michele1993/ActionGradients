@@ -1,51 +1,54 @@
-import sys
-sys.path.append('../MotorGeneralisation_exp') # need to import scripts from MotorGen.. since uses batches (i.e., multiple targets)
 import os
-from Linear_motor_model  import Mot_model
-from Agent import *
+from NN_motor_model  import Mot_model
+from NN_Agent import *
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
-from CombinedAG import CombActionGradient
+from NN_CombinedAG import CombActionGradient
 
 ''' Check what beta value gives best accuracy across different levels of noise, by training an agent from scratch'''
 
-seeds = [8721, 5467, 1092, 9372,2801]
+seeds = [3009, 5467, 1092, 9372,2801]
 
-trials = 5000
-t_print = 100
-save_file = False
+trials = 5001
+t_print = 250
+save_file = True
+
+## set dimension
+action_s = 10
+output_s = 3
+n_targets = 10
 
 # Set noise variables
-sensory_noises = torch.linspace(0,10,5)
-fixd_a_noise = 0.02 # set to experimental data value
+sensory_noises = torch.linspace(0,0.5,10)
+fixd_a_noise = torch.tensor([0]).unsqueeze(-1) # set to experimental data value
 
 # Set update variables
-a_ln_rate = 0.01
+a_ln_rate = 0.001
 c_ln_rate = 0.1
-model_ln_rate = 0.01
-betas = np.arange(0,11,1) /10.0
+model_ln_rate = 0.001
+betas = [0, 0.25, 0.5, 0.75, 1] #np.arange(0,11,2) /10.0 # [0,0.5,1] 
 
 ## Peturbation:
-#targets = [-30, -20, -10, 0, 10, 20, 30] # based on Izawa
-targets = [10]  # based on Izawa
-y_star = torch.tensor(targets,dtype=torch.float32).unsqueeze(-1) * 0.0176
-
-model = Mot_model()
+cue = torch.eye(n_targets,n_targets)
 
 seed_best_betas = []
+seed_best_betas.append(sensory_noises)
 for s in seeds:
     torch.manual_seed(s)
     np.random.seed(s)
     best_betas = []
+
+    model = Mot_model(action_s=action_s,output_s=output_s)
+    y_star = torch.clip(torch.randn(n_targets,output_s),-1,1)
 
     for noise in sensory_noises:
         beta_accuracy = []
 
         for b in betas:
             # Initialise differento components
-            actor = Actor(ln_rate = a_ln_rate, trainable = True) # 1D environment
-            estimated_model = Mot_model(ln_rate=model_ln_rate,lamb=None, Fixed = False)
+            actor = Actor(input_s=n_targets, action_s=action_s, ln_rate = a_ln_rate)
+            estimated_model = Mot_model(action_s=action_s,output_s=output_s,ln_rate=model_ln_rate, Fixed=False)
             CAG = CombActionGradient(actor, b)
 
             mean_rwd = 0
@@ -53,7 +56,7 @@ for s in seeds:
 
             for ep in range(1,trials+1):
                 # Sample action from Gaussian policy
-                action, mu_a, std_a = actor.computeAction(y_star, fixd_a_noise)
+                action, mu_a, std_a = actor.computeAction(cue, fixd_a_noise)
 
                 # Perform action in the env
                 true_y = model.step(action.detach())
@@ -63,13 +66,13 @@ for s in seeds:
 
                 # Compute differentiable rwd signal
                 y.requires_grad_(True)
-                rwd = (y - y_star)**2 # it is actually a punishment
-                true_rwd = (true_y - y_star)**2 # it is actually a punishment
-                trial_acc.append(torch.sqrt((true_y - y_star)**2).detach().mean().item())
+                rwd = torch.mean((y - y_star)**2, dim=-1,keepdim=True) # it is actually a punishment
+                true_rwd = torch.mean((true_y - y_star)**2,dim=-1,keepdim=True) # it is actually a punishment
+                trial_acc.append(torch.mean(torch.sqrt((true_y - y_star)**2),dim=-1).detach().mean().item())
                 
                 ## ====== Use running average to compute RPE =======
-                delta_rwd = rwd - mean_rwd
-                #delta_rwd = true_rwd - mean_rwd
+                #delta_rwd = rwd - mean_rwd
+                delta_rwd = true_rwd - mean_rwd
                 mean_rwd += c_ln_rate * delta_rwd.detach()
                 ## ==============================================
 
@@ -85,8 +88,8 @@ for s in seeds:
                 R_grad = CAG.computeRBLGrad(action, mu_a, std_a, delta_rwd)
                 E_grad = CAG.computeEBLGrad(y, est_y, action, mu_a, std_a, rwd)
 
-                R_grad_norm = torch.norm(R_grad, dim=-1, keepdim=True)
-                E_grad_norm = torch.norm(E_grad, dim=-1, keepdim=True)
+                R_grad_norm = torch.norm(R_grad, dim=-1, keepdim=True) + 1e-12
+                E_grad_norm = torch.norm(E_grad, dim=-1, keepdim=True) + 1e-12
 
                 # Combine the two gradients angles
                 comb_action_grad = b * E_grad/E_grad_norm + (1-b) * R_grad/R_grad_norm 
@@ -94,7 +97,7 @@ for s in seeds:
                 # Combine the two gradients norms
                 comb_action_grad *= b * E_grad_norm + (1-b) * R_grad_norm
 
-                action_variables = torch.cat([mu_a, std_a],dim=-1)
+                action_variables = torch.cat([mu_a,std_a],dim=-1)
 
                 # ----- Update actor ----
                 actor.ActionGrad_update(comb_action_grad, action_variables)
@@ -102,33 +105,29 @@ for s in seeds:
                 # Store variables after pre-train (including final trials without a perturbation)
                 if ep % t_print ==0:
                     accuracy = sum(trial_acc) / len(trial_acc)
+                    #print('ep: ',ep, 'beta: ',b, 'accuracy: ',accuracy)
                     trial_acc = []
 
             beta_accuracy.append(accuracy) # store final accuracy
 
         beta_accuracy = np.array(beta_accuracy)
-        best_betas.append(np.argmin(beta_accuracy))
-        print("Noise level: ",noise, "Best beta: ", best_betas[-1]) 
-        print('Accuracies: ', beta_accuracy,'\n')
+        best_betas.append(betas[np.argmin(beta_accuracy)])
+        #print(beta_accuracy)
+        print("Noise level: ",noise, "Best beta: ", best_betas[-1],'\n') 
     seed_best_betas.append(np.array(best_betas))
 
+seed_best_betas = np.array(seed_best_betas,dtype=object)
 ## ===== Save results =========
 # Create directory to store results
 file_dir = os.path.dirname(os.path.abspath(__file__))
-file_dir = os.path.join(file_dir,'results','Noisy_Forward',str(s))
+file_dir = os.path.join(file_dir,'results')
 # Create directory if it did't exist before
 os.makedirs(file_dir, exist_ok=True)
 
 # Store model
-data = 'Noise_'+str(round(noise.item(),3))+'model.pt'
-model_dir = os.path.join(file_dir,data)
+data = 'BestBeta_sensory_noise.npy'
+
+BestB_dir = os.path.join(file_dir,data)
 
 if save_file:
-    torch.save({
-        "Targets": targets,
-        'Actor': actor.state_dict(),
-        'Net_optim': actor.optimiser.state_dict(),
-        'Mean_rwd': mean_rwd,
-        'Est_model': estimated_model.state_dict(),
-        'Model_optim': estimated_model.optimiser.state_dict(),
-    }, model_dir)
+    np.save(BestB_dir,seed_best_betas)

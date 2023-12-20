@@ -16,7 +16,7 @@ mpl.rcParams['xtick.labelsize'] = font_s
 mpl.rcParams['ytick.labelsize'] = font_s 
 
 # Subplot
-fig, ax2 = plt.subplots(nrows=1, ncols=4, figsize=(6.5,2),
+fig, ax2 = plt.subplots(nrows=1, ncols=4, figsize=(7.5,2),
  gridspec_kw={'wspace': 0.5, 'hspace': 0.3, 'left': 0.1, 'right': 0.95, 'bottom': 0.25,
                                                'top': 0.95})
 ## ==== Plot training accuracy ====
@@ -100,7 +100,7 @@ sud_std_acc = np.std(sudden_cng_acc,axis=0)
 t = np.arange(1,sud_mean_acc.shape[0]+1,1)
 
 ## PLot the bar chart across 3 conditions
-label = "$\\beta$-change"
+label = "Change in $\\beta$"
 ax2[2].plot(t, sud_mean_acc, alpha=0.75, color='tab:orange')
 ax2[2].axvline(x=Beta_chang_trials[0], color='k', linestyle='dashed',lw=1, label=label)
 ax2[2].set_ylim([0, 0.85])
