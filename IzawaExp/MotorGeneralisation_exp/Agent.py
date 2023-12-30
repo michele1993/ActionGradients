@@ -4,15 +4,15 @@ import torch.optim as opt
 
 class Actor(nn.Module):
 
-    def __init__(self,input_s=1,action_s=1,ln_rate = 1e-3, trainable = True, opt_type='Adam'):
+    def __init__(self,input_s=1,action_s=1,ln_rate = 1e-3, trainable = True, opt_type='Adam',bias=True):
 
         super().__init__()
 
         self.action_s = action_s
         # Maintain two separate sets of weights for the mean and std of the Gaussian policy
         # So can initialise them with two different scales
-        self.l1 = nn.Linear(input_s,action_s)
-        self.l2 = nn.Linear(input_s, action_s)
+        self.l1 = nn.Linear(input_s,action_s, bias=bias)
+        self.l2 = nn.Linear(input_s, action_s, bias=bias)
 
 
         # Initialise network with small weights

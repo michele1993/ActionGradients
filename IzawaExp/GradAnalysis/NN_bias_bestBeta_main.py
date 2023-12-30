@@ -6,13 +6,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 from NN_CombinedAG import CombActionGradient
 
-''' Check what beta value gives best accuracy across different levels of noise, by training an agent from scratch'''
+''' Check what beta value gives best accuracy across different amounts of bias in EBL action grad, by training an agent from scratch'''
 
 seeds = [3009, 5467, 1092, 9372,2801]
 
 trials = 5001
 t_print = 250
-save_file = True
+save_file = False
 
 ## set dimension
 action_s = 10
@@ -20,8 +20,9 @@ output_s = 3
 n_targets = 10
 
 # Set noise variables
-sensory_noises = torch.linspace(0,0.5,10)
+sensory_biases = torch.linspace(0,1,11)
 fixd_a_noise = torch.tensor([0]).unsqueeze(-1) # set to experimental data value
+sensory_noise = 0
 
 # Set update variables
 a_ln_rate = 0.001
@@ -33,7 +34,7 @@ betas = [0, 0.25, 0.5, 0.75, 1] #np.arange(0,11,2) /10.0 # [0,0.5,1]
 cue = torch.eye(n_targets,n_targets)
 
 seed_best_betas = []
-seed_best_betas.append(sensory_noises)
+seed_best_betas.append(sensory_biases)
 for s in seeds:
     torch.manual_seed(s)
     np.random.seed(s)
@@ -42,8 +43,10 @@ for s in seeds:
     model = Mot_model(action_s=action_s,output_s=output_s)
     y_star = torch.clip(torch.randn(n_targets,output_s),-1,1)
 
-    for noise in sensory_noises:
+    for bias in sensory_biases:
         beta_accuracy = []
+
+        c_bias = torch.ones(1,action_s*2) * bias # NOTE: also learning std for each action dimension
 
         for b in betas:
             # Initialise differento components
@@ -62,7 +65,7 @@ for s in seeds:
                 true_y = model.step(action.detach())
                 
                 # Add noise to sensory obs
-                y = true_y + torch.randn_like(true_y) * noise
+                y = true_y + torch.randn_like(true_y) * sensory_noise
 
                 # Compute differentiable rwd signal
                 y.requires_grad_(True)
@@ -86,7 +89,7 @@ for s in seeds:
                 ## ---- Compute mixed action gradient ----
                 # (do it manually so that can use true_rwd)
                 R_grad = CAG.computeRBLGrad(action, mu_a, std_a, delta_rwd)
-                E_grad = CAG.computeEBLGrad(y, est_y, action, mu_a, std_a, rwd)
+                E_grad = CAG.computeEBLGrad(y, est_y, action, mu_a, std_a, rwd) + c_bias
 
                 R_grad_norm = torch.norm(R_grad, dim=-1, keepdim=True) + 1e-12
                 E_grad_norm = torch.norm(E_grad, dim=-1, keepdim=True) + 1e-12
@@ -113,7 +116,7 @@ for s in seeds:
         beta_accuracy = np.array(beta_accuracy)
         best_betas.append(betas[np.argmin(beta_accuracy)])
         #print(beta_accuracy)
-        print("Noise level: ",noise, "Best beta: ", best_betas[-1],'\n') 
+        print("Bias level: ", c_bias, "Best beta: ", best_betas[-1],'\n') 
     seed_best_betas.append(np.array(best_betas))
 
 seed_best_betas = np.array(seed_best_betas,dtype=object)
@@ -125,7 +128,7 @@ file_dir = os.path.join(file_dir,'results')
 os.makedirs(file_dir, exist_ok=True)
 
 # Store model
-data = 'BestBeta_sensory_noise.npy'
+data = 'BestBeta_sensory_bias.npy'
 
 BestB_dir = os.path.join(file_dir,data)
 

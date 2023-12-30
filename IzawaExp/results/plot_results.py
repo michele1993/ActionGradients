@@ -120,8 +120,25 @@ ax2[0,2].set_yticks([2,3,4])
 ax2[0,2].spines['right'].set_visible(False)
 ax2[0,2].spines['top'].set_visible(False)
 ax2[0,2].set_xlabel('Beta values')
+ax2[0,2].xaxis.set_ticks_position('none') 
+ax2[0,2].yaxis.set_ticks_position('none') 
 
+## ======== Plot action nosie adaptation for negative rewards ==========
 
+std_a_dir = os.path.join(file_dir,'beta_grid','Mixed_0_std_a_adaptation.npy')
+std_a = np.load(std_a_dir) / 0.0176
+mean_std_a = std_a.mean(axis=0)
+std_std_a = std_a.std(axis=0) / normalising_sde
+
+t = np.arange(0,11,1)
+
+ax2[0,3].errorbar(t, mean_std_a, yerr=std_std_a, capsize=3, fmt="r--o", ecolor = "black",markersize=4, color=colors[2], alpha=0.5)
+ax2[0,3].spines['right'].set_visible(False)
+ax2[0,3].spines['top'].set_visible(False)
+#ax2[0,3].set_ylabel('Action noise')
+ax2[0,3].set_xlabel('Trials (x50)')
+ax2[0,3].xaxis.set_ticks_position('none') 
+ax2[0,3].yaxis.set_ticks_position('none') 
 
 
 ##  ========== Plot standard generalisation results =============
@@ -133,13 +150,29 @@ gen_mean = np.round(np.flip(generalisation_res[0,:]),3)
 gen_std = np.flip(generalisation_res[1,:]) /normalising_sde
 
 for i, c in enumerate(colors):
-    ax2[0,3].plot(i, gen_mean[i], 'o', markersize=5, color=c, alpha=0.5)
-ax2[0,3].errorbar(conditions, gen_mean, yerr=gen_std,capsize=3, ecolor = "black", elinewidth=0.75, color=c, fmt="None")
-ax2[0,3].spines['right'].set_visible(False)
-ax2[0,3].spines['top'].set_visible(False)
-ax2[0,3].set_ylabel('Generalization error')
-ax2[0,3].xaxis.set_ticks_position('none') 
-ax2[0,3].yaxis.set_ticks_position('none') 
+    ax2[1,0].plot(i, gen_mean[i], 'o', markersize=5, color=c, alpha=0.5)
+ax2[1,0].errorbar(conditions, gen_mean, yerr=gen_std,capsize=3, ecolor = "black", elinewidth=0.75, color=c, fmt="None",alpha=0.5)
+ax2[1,0].spines['right'].set_visible(False)
+ax2[1,0].spines['top'].set_visible(False)
+ax2[1,0].set_ylabel('Generalization error')
+ax2[1,0].xaxis.set_ticks_position('none') 
+ax2[1,0].yaxis.set_ticks_position('none') 
+
+## ======== Plot training accuracy for policy generalisation =====
+gen_trainign_dir = os.path.join(gen_dir,'pol_train_acc.npy')
+gen_trainign_acc = np.load(gen_trainign_dir)
+n_trials = gen_trainign_acc.shape[-1]
+t = np.arange(1,n_trials+1,1)
+
+for i in range(3):
+    ax2[1,1].plot(t, gen_trainign_acc[i,:], color=np.flip(colors)[i], alpha=0.5)
+
+ax2[1,1].spines['right'].set_visible(False)
+ax2[1,1].spines['top'].set_visible(False)
+ax2[1,1].set_ylabel('Training accuracy')
+ax2[1,1].set_xlabel('Trials (x100)')
+ax2[1,1].xaxis.set_ticks_position('none') 
+ax2[1,1].yaxis.set_ticks_position('none') 
 
 ## ======== Plot changes in various accuracies across noise levels =======
 ## i.e., error, forward model accuracy and gradient accuracy
@@ -160,21 +193,25 @@ std_grad_acc = np.std(generalisation_res[2],axis=0) / normalising_sde
 sensory_noises = torch.linspace(0.01,0.25,10)
 
 # Generalisation Error
-ax2[1,0].errorbar(sensory_noises, mean_acc, yerr=std_acc, capsize=3, fmt="r--o", ecolor = "black",markersize=4, color=colors[0], alpha=0.5)
-ax2[1,0].spines['right'].set_visible(False)
-ax2[1,0].spines['top'].set_visible(False)
-ax2[1,0].set_ylabel('EBL error')
-ax2[1,0].set_xlabel('Sensory noise')
+ax2[1,2].errorbar(sensory_noises, mean_acc, yerr=std_acc, capsize=3, fmt="r--o", ecolor = "black",markersize=4, color=colors[0], alpha=0.5)
+ax2[1,2].spines['right'].set_visible(False)
+ax2[1,2].spines['top'].set_visible(False)
+ax2[1,2].set_ylabel('EBL error')
+ax2[1,2].set_xlabel('Sensory noise')
+ax2[1,2].xaxis.set_ticks_position('none') 
+ax2[1,2].yaxis.set_ticks_position('none') 
 
 # Gradient Error
-ax2[1,1].errorbar(sensory_noises, mean_grad_acc, yerr=std_grad_acc, capsize=3, fmt="r--o", ecolor = "black", color=colors[0],markersize=4, alpha=0.5)
-ax2[1,1].spines['right'].set_visible(False)
-ax2[1,1].spines['top'].set_visible(False)
-ax2[1,1].set_ylabel('EBL gradient error')
-ax2[1,1].set_xlabel('Sensory noise')
+ax2[1,3].errorbar(sensory_noises, mean_grad_acc, yerr=std_grad_acc, capsize=3, fmt="r--o", ecolor = "black", color=colors[0],markersize=4, alpha=0.5)
+ax2[1,3].spines['right'].set_visible(False)
+ax2[1,3].spines['top'].set_visible(False)
+ax2[1,3].set_ylabel('EBL gradient error')
+ax2[1,3].set_xlabel('Sensory noise')
+ax2[1,3].xaxis.set_ticks_position('none') 
+ax2[1,3].yaxis.set_ticks_position('none') 
 
 
 
 plt.show()
 ## SAVE: figure
-#plt.savefig('/Users/px19783/Desktop/Cosyn_all', format='png', dpi=1400)
+#plt.savefig('/Users/px19783/Desktop/Izawa_results', format='png', dpi=1400)

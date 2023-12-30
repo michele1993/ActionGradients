@@ -10,7 +10,7 @@ from CombinedAG import CombActionGradient
 seeds = [8721, 5467, 1092, 9372,2801]
 
 trials = 5000
-t_print = 1000
+t_print = 100
 save_file = False
 
 # Set noise variables
@@ -108,6 +108,7 @@ for s in seeds:
 
         if save_file:
             torch.save({
+                "Training_acc": tot_accuracy,
                 "Targets": targets,
                 'Actor': actor.state_dict(),
                 'Net_optim': actor.optimiser.state_dict(),
