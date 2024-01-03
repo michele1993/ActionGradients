@@ -123,22 +123,31 @@ ax2[0,2].set_xlabel('Beta values')
 ax2[0,2].xaxis.set_ticks_position('none') 
 ax2[0,2].yaxis.set_ticks_position('none') 
 
-## ======== Plot action nosie adaptation for negative rewards ==========
+## ======== Plot action nosie adaptation for negative and positive RPE ==========
 
-std_a_dir = os.path.join(file_dir,'beta_grid','Mixed_0_std_a_adaptation.npy')
-std_a = np.load(std_a_dir) / 0.0176
-mean_std_a = std_a.mean(axis=0)
-std_std_a = std_a.std(axis=0) / normalising_sde
+# Load data for negative RPEs
+std_a_dir_NegRPE = os.path.join(file_dir,'beta_grid','Mixed_0_std_a_adaptation_NegRPE.npy')
+std_a_NegRPE = np.load(std_a_dir_NegRPE) / 0.0176
+mean_std_a_NegRPE = std_a_NegRPE.mean(axis=0)
+std_std_a_NegRPE = std_a_NegRPE.std(axis=0) / normalising_sde
 
-t = np.arange(0,11,1)
+# Load data for positive RPEs
+std_a_dir_PosRPE = os.path.join(file_dir,'beta_grid','Mixed_0_std_a_adaptation_PosRPE.npy')
+std_a_PosRPE = np.load(std_a_dir_PosRPE) / 0.0176
+mean_std_a_PosRPE = std_a_PosRPE.mean(axis=0)
+std_std_a_PosRPE = std_a_PosRPE.std(axis=0) / normalising_sde
 
-ax2[0,3].errorbar(t, mean_std_a, yerr=std_std_a, capsize=3, fmt="r--o", ecolor = "black",markersize=4, color=colors[2], alpha=0.5)
+t = np.arange(0,11,1) *10
+RPE_colors = ['tab:purple', 'tab:olive']
+ax2[0,3].errorbar(t, mean_std_a_NegRPE, yerr=std_std_a_NegRPE, capsize=3, fmt="r--o", ecolor = "black",markersize=4, color=RPE_colors[0], alpha=0.5, label='RPEs < 0')
+ax2[0,3].errorbar(t, mean_std_a_PosRPE, yerr=std_std_a_PosRPE, capsize=3, fmt="r--o", ecolor = "black",markersize=4, color=RPE_colors[1], alpha=0.5, label='RPEs > 0')
 ax2[0,3].spines['right'].set_visible(False)
 ax2[0,3].spines['top'].set_visible(False)
 #ax2[0,3].set_ylabel('Action noise')
-ax2[0,3].set_xlabel('Trials (x50)')
+ax2[0,3].set_xlabel('Trials')
 ax2[0,3].xaxis.set_ticks_position('none') 
 ax2[0,3].yaxis.set_ticks_position('none') 
+ax2[0,3].legend(loc='upper left', bbox_to_anchor=(0.28, 0.64), frameon=False,fontsize=font_s)
 
 
 ##  ========== Plot standard generalisation results =============
@@ -169,7 +178,7 @@ for i in range(3):
 
 ax2[1,1].spines['right'].set_visible(False)
 ax2[1,1].spines['top'].set_visible(False)
-ax2[1,1].set_ylabel('Training accuracy')
+ax2[1,1].set_ylabel('Training error')
 ax2[1,1].set_xlabel('Trials (x100)')
 ax2[1,1].xaxis.set_ticks_position('none') 
 ax2[1,1].yaxis.set_ticks_position('none') 

@@ -12,14 +12,15 @@ seeds = [8721, 5467, 1092, 9372,2801]
 save_file = False
 
 # Experimental set-up based on Izawa and Shadmer, 2011
-tot_trials = 501
-t_print = 50 # how often compute mean of std_a to be stored
+tot_trials = 101
+t_print = 10 # how often compute mean of std_a to be stored
 target = 0.1056 # target angle : 6 degrees 
 y_star = torch.tensor([target],dtype=torch.float32)
+neg_RPE = True # use to fix RPE to either all positive or all negative
 
 # Set noise variables
 sensory_noise = 0.01
-fixd_a_noise = 0.02#0.02 # set to experimental data value
+fixd_a_noise = 0.02 #0.02 # set to experimental data value
 
 # Set update variables
 a_ln_rate = 0.001
@@ -82,7 +83,10 @@ for beta in betas:
             # For rwd-base learning give rwd of 1 if reach better than previous else -1
             if beta == 0:
                delta_rwd /= (torch.abs(delta_rwd.detach()) + 1e-12)
-               delta_rwd = - torch.abs(delta_rwd)
+               if neg_RPE:
+                    delta_rwd = - torch.abs(delta_rwd)
+               else: 
+                    delta_rwd = torch.abs(delta_rwd)
 
             # Update the model
             est_y = estimated_model.step(action.detach())
@@ -109,7 +113,10 @@ for beta in betas:
     file_dir = os.path.join(file_dir,'beta_grid')
     os.makedirs(file_dir, exist_ok=True)
     label = "Mixed_"+str(beta)
-    std_var_dir = os.path.join(file_dir,label+'_std_a_adaptation') # For the mixed model
+    if neg_RPE:
+        std_var_dir = os.path.join(file_dir,label+'_std_a_adaptation_NegRPE') # For the mixed model
+    else:
+        std_var_dir = os.path.join(file_dir,label+'_std_a_adaptation_PosRPE') # For the mixed model
 
     # Save all outcomes so that can then plot whatever you want
     if save_file: 

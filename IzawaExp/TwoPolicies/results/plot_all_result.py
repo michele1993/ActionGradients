@@ -56,10 +56,10 @@ EBL_std_mean = seed_EBL_a_std.mean(axis=0)
 EBL_std_std = seed_EBL_a_std.std(axis=0) /sde
 
 t = np.arange(1,len(NoBeta_acc_mean)+1,1)
-colors = ['tab:olive','tab:blue']
-ax2[0].plot(t, NoBeta_acc_mean, alpha=0.75, color=colors[0],label="No $\\beta$-weighting")
+colors = ['tab:orange','tab:purple']
+ax2[0].plot(t, NoBeta_acc_mean, alpha=0.75, color=colors[0],label="No $\\alpha$-weighting")
 ax2[0].fill_between(t,NoBeta_acc_mean-NoBeta_acc_std, NoBeta_acc_mean+NoBeta_acc_std, alpha = 0.25, color=colors[0])
-ax2[0].plot(t, EBL_acc_mean, alpha=0.75, color=colors[1],label="$\\beta$-weighting")
+ax2[0].plot(t, EBL_acc_mean, alpha=0.75, color=colors[1],label="$\\alpha$-weighting")
 ax2[0].fill_between(t,EBL_acc_mean-EBL_acc_std, EBL_acc_mean+EBL_acc_std, alpha = 0.25, color=colors[1])
 ax2[0].spines['right'].set_visible(False)
 ax2[0].spines['top'].set_visible(False)
@@ -72,7 +72,7 @@ ax2[0].legend(loc='upper left', bbox_to_anchor=(0.05, 1.0), frameon=False,fontsi
 ## Plot variance for NoBeta and EBL
 gen_mean = [NoBeta_std_mean, EBL_std_mean]
 gen_std = [NoBeta_std_std, EBL_std_std]
-conditions = ["No $\\beta$-weighting", "$\\beta$-weighting"]
+conditions = ["No $\\alpha$-weighting", "$\\alpha$-weighting"]
 for i, c in enumerate(colors):
     ax2[1].plot(conditions[i], gen_mean[i], 'o', markersize=5, color=c, alpha=0.5)
     ax2[1].errorbar(i, gen_mean[i], yerr=gen_std[i],capsize=3, ecolor = "black", elinewidth=0.75, color=c, fmt="None")
@@ -100,8 +100,8 @@ sud_std_acc = np.std(sudden_cng_acc,axis=0)
 t = np.arange(1,sud_mean_acc.shape[0]+1,1)
 
 ## PLot the bar chart across 3 conditions
-label = "Change in $\\beta$"
-ax2[2].plot(t, sud_mean_acc, alpha=0.75, color='tab:orange')
+label = "Increase in $\\alpha$"
+ax2[2].plot(t, sud_mean_acc, alpha=0.75, color='tab:purple')
 ax2[2].axvline(x=Beta_chang_trials[0], color='k', linestyle='dashed',lw=1, label=label)
 ax2[2].set_ylim([0, 0.85])
 ax2[2].spines['right'].set_visible(False)
@@ -118,7 +118,7 @@ slow_std_acc = np.std(slow_cng_acc,axis=0)
 
 
 ## PLot the bar chart across 3 conditions
-ax2[3].plot(t, slow_mean_acc, alpha=0.75, color='tab:orange')
+ax2[3].plot(t, slow_mean_acc, alpha=0.75, color='tab:purple')
 for c in Beta_chang_trials:
     ax2[3].axvline(x=c, color='k', linestyle='dashed',lw=1, label=label)
 ax2[2].set_ylim([0, 0.85])
@@ -130,6 +130,6 @@ ax2[3].yaxis.set_ticks_position('none')
 ax2[3].set_ylim([0, 0.15])
 #ax2[3].set_yticks([])
 
-plt.show()
+#plt.show()
 ## SAVE: figure
-#plt.savefig('/Users/px19783/Desktop/TwoPolicies_results', format='png', dpi=1400)
+plt.savefig('/Users/px19783/Desktop/TwoPolicies_results', format='png', dpi=1400)
