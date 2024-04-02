@@ -48,7 +48,7 @@ for acc in mean_train_acc:
 
 axs[0,0].spines['right'].set_visible(False)
 axs[0,0].spines['top'].set_visible(False)
-axs[0,0].set_ylabel('Training accuracy')
+axs[0,0].set_ylabel('Training error')
 axs[0,0].set_xlabel('Training episodes')
 axs[0,0].xaxis.set_ticks_position('none') 
 axs[0,0].yaxis.set_ticks_position('none') 
@@ -62,7 +62,7 @@ axs[0,1].errorbar(conditions,ataxia_mean[0], yerr=ataxia_se[0], ls='none', color
 axs[0,1].spines['right'].set_visible(False)
 axs[0,1].spines['top'].set_visible(False)
 axs[0,1].set_ylabel('Ataxia score')
-axs[0,1].set_xlabel('CB contribution')
+axs[0,1].set_xlabel('CC contribution')
 axs[0,1].legend(loc='upper center', bbox_to_anchor=(0.4, 1), frameon=False, fontsize=font_s)#, ncol=5)
 axs[0,1].xaxis.set_ticks_position('none') 
 axs[0,1].yaxis.set_ticks_position('none') 
@@ -81,9 +81,9 @@ i=0
 colors = ['tab:red','tab:green','tab:blue']
 for m,s in zip(ataxia_mean, ataxia_se):
     if i ==0:
-        axs[0,2].errorbar(updt_conditions[i,0],m[0], yerr=s[0], label='DA-only', capsize=3, fmt="r--o",markerfacecolor=colors[0],markeredgecolor=colors[0],c='black',elinewidth=1,alpha=alpha)
+        axs[0,2].errorbar(updt_conditions[i,0],m[0], yerr=s[0], label='DA only', capsize=3, fmt="r--o",markerfacecolor=colors[0],markeredgecolor=colors[0],c='black',elinewidth=1,alpha=alpha)
         axs[0,2].errorbar(updt_conditions[i,1],m[3], yerr=s[3], label='Mixed', capsize=3, fmt="r--o",markerfacecolor=colors[1],markeredgecolor=colors[1],c='black',elinewidth=1,alpha=alpha)
-        axs[0,2].errorbar(updt_conditions[i,2],m[4], yerr=s[4], label='CB-only', capsize=3, fmt="r--o",markerfacecolor=colors[2],markeredgecolor=colors[2],c='black',elinewidth=1,alpha=alpha)
+        axs[0,2].errorbar(updt_conditions[i,2],m[4], yerr=s[4], label='CC only', capsize=3, fmt="r--o",markerfacecolor=colors[2],markeredgecolor=colors[2],c='black',elinewidth=1,alpha=alpha)
     else:
         axs[0,2].errorbar(updt_conditions[i,0],m[0], yerr=s[0], capsize=3, fmt="r--o",markerfacecolor=colors[0],markeredgecolor=colors[0],c='black',elinewidth=1,alpha=alpha)
         axs[0,2].errorbar(updt_conditions[i,1],m[1], yerr=s[1], capsize=3, fmt="r--o",markerfacecolor=colors[1],markeredgecolor=colors[1],c='black',elinewidth=1,alpha=alpha)
@@ -93,7 +93,7 @@ for m,s in zip(ataxia_mean, ataxia_se):
 axs[0,2].spines['right'].set_visible(False)
 axs[0,2].spines['top'].set_visible(False)
 axs[0,2].set_xlabel('sensory temporal feedback')
-axs[0,2].set_ylabel('Accuracy')
+axs[0,2].set_ylabel('Task error')
 #axs[0,2].legend(loc='upper center', bbox_to_anchor=(0.24, 1.05), frameon=False, fontsize=font_s)#, ncol=5)
 axs[0,2].legend(loc='upper left', bbox_to_anchor=(-1.25, -0.3), frameon=False,fontsize=font_s, ncol=3)
 axs[0,2].xaxis.set_ticks_position('none') 
