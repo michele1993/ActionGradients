@@ -11,7 +11,7 @@ torch.manual_seed(0)
 """ Generate a basline policy to test the pertubation effects on different signal types as in Izawa and Shadmer, 2011"""
 ## NOTE: The baseline policy is assumed to be trained with a mixed signal (beta=0.5) to avoid favouring any of the two approaches, while starting the perturbation with the same settings.
 
-trials = 2500
+trials = 5000
 t_print = 100
 save_file = False
 ## Set trials to match Izawa and Shadmer, 2011 experimental set-up, where they add 1 degree pertubation every 40 trials up to 8 degreese
@@ -21,12 +21,12 @@ sensory_noise = 0.01
 fixd_a_noise = 0.02 # set to experimental data value
 
 # Set update variables
-a_ln_rate = 0.01
+a_ln_rate = 0.005
 c_ln_rate = 0.1
 model_ln_rate = 0.01
 beta = 0.5 ## DON'T CHANGE, Read NOTE above.
-rbl_weight =  1.5
-ebl_weight = 0.1
+rbl_weight = [0.01, 0.01]
+ebl_weight = [5, 100]
 
 ## Peturbation:
 

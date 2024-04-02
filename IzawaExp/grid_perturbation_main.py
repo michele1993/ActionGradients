@@ -22,18 +22,19 @@ perturbation_increase = 0.0176 # equivalent to 1 degree
 max_perturbation = perturbation_increase * n_pertubations
 target = 0.1056 # target angle : 6 degrees 
 y_star = torch.tensor([target],dtype=torch.float32)
+rwd_area = 0.01
 
 # Set noise variables
 sensory_noise = 0.01
-fixd_a_noise = 0.019#0.02 # set to experimental data value
+fixd_a_noise = 0.018 #0.02 # set to experimental data value
 
 # Set update variables
-a_ln_rate = 0.05
+a_ln_rate = 0.5 #0.05
 c_ln_rate = 0.05
 model_ln_rate = 0.01
 betas = np.arange(0,11,1) /10.0
-rbl_weight = [0.01, 0.01]
-ebl_weight = [5, 100]
+rbl_weight = [0.002, 5] # [0.034, 100]
+ebl_weight = [0.2, 5] # [1.5, 100]
 #rbl_weight = [1, 1]
 #ebl_weight = [1, 1]
 
@@ -58,7 +59,7 @@ for s in seeds:
         actor.load_state_dict(models['Actor'])
         estimated_model = Mot_model(ln_rate=model_ln_rate,lamb=None,Fixed=False)
         estimated_model.load_state_dict(models['Est_model'])
-        mean_rwd = models['Mean_rwd']
+        mean_rwd = 0#models['Mean_rwd']
 
         # Initialise additional components
         model = Mot_model()
@@ -95,16 +96,17 @@ for s in seeds:
 
             # Compute differentiable rwd signal
             y.requires_grad_(True)
-            rwd = (y - y_star)**2 # it is actually a punishment
+            error = (y - y_star)**2 # it is actually a punishment
+
+            if torch.sqrt(error) <= rwd_area:
+                rwd = 1
+            else:
+                rwd = -1
             
             ## ====== Use running average to compute RPE =======
             delta_rwd = rwd - mean_rwd
-            mean_rwd += c_ln_rate * delta_rwd.detach()
+            mean_rwd += c_ln_rate * delta_rwd#.detach()
             ## ==============================================
-
-            # For rwd-base learning give rwd of 1 if reach better than previous else -1
-            if beta == 0:
-               delta_rwd /= torch.abs(delta_rwd.detach()) 
 
             # Update the model
             est_y = estimated_model.step(action.detach())
@@ -113,14 +115,14 @@ for s in seeds:
             # Update actor based on combined action gradient
             #if ep > pre_train:
             est_y = estimated_model.step(action)  # re-estimate values since model has been updated
-            CAG.update(y, est_y, action, mu_a, std_a, delta_rwd)
+            CAG.update(y, est_y, action, mu_a, std_a, error, delta_rwd)
 
             # Store variables 
-            accuracy = np.sqrt(rwd.detach().numpy())
+            accuracy = np.sqrt(error.detach().numpy())
             tot_accuracy.append(accuracy)
             tot_actions.append(action.detach().numpy())
             tot_outcomes.append(true_y.detach().numpy() - target) # make it so that 0 radiants refer to the target
-
+            
         outcome_variability = np.std(tot_outcomes[-fixed_trials:])
         print("Beta: ", beta)
         print("Tot variability: ",outcome_variability,"\n") # compute variability across final fixed trials like in paper

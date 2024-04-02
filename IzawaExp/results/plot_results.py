@@ -41,9 +41,10 @@ fig, ax2 = plt.subplots(nrows=2, ncols=4, figsize=(7,4),
 EBL_mean_variability = mean_var[-1]
 EBL_std_variability = std_var[-1] / normalising_sde
 
+mixed_beta = 6
 ## Based on Izawa's results, use beta=0.4 
-Mixed_mean_variability = mean_var[4]
-Mixed_std_variability = std_var[4] / normalising_sde
+Mixed_mean_variability = mean_var[mixed_beta]
+Mixed_std_variability = std_var[mixed_beta] / normalising_sde
 
 RBL_mean_variability = mean_var[0]
 RBL_std_variability = std_var[0] / normalising_sde
@@ -91,7 +92,7 @@ for s in seeds:
 
 tot_var = np.array(tot_var) / 0.0176 # convert to degrees
 # Select trajectories for beta=0,0.3,1 (i.e., base on variance analysis resutls, best capturing Izawa's)
-results = tot_var.mean(axis=0)[[0,5,10],:].squeeze()
+results = tot_var.mean(axis=0)[[0,mixed_beta,10],:].squeeze()
 final_trials = results[:,-100:]
 mean_adapt = np.flip(final_trials.mean(-1))
 stde_adapt = np.flip(final_trials.std(-1) / normalising_sde)

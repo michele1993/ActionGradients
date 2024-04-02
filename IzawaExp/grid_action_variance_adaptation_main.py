@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from CombinedAG import CombActionGradient
 
-""" Load a pre-trained model and test under perturbation matching Izawa and Shadmer, 2011 experimental set-up, where they add 1 degree pertubation every 40 trials up to 8 degreese , do these across different values for Beta as well as across 5 random seeds"""
+"""Fix the RPEs to either only positive or only negative to study how the action variance is adpated in response to neg and pos RPEs"""
 
 seeds = [8721, 5467, 1092, 9372,2801]
 save_file = False
