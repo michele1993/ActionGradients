@@ -6,10 +6,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 from CombinedAG import CombActionGradient
 
-""" Load a pre-trained model and test under perturbation matching Izawa and Shadmer, 2011 experimental set-up, where they add 1 degree pertubation every 40 trials up to 8 degreese , do these across different values for Beta as well as across 5 random seeds"""
+""" Load a pre-trained model and test under perturbation matching Izawa and Shadmer, 2011 experimental set-up, where they add 1 degree pertubation every 40 trials up to 8 degreese , do these across different values for Beta as well as across 5 random seeds
+NOTE: use the exact same rwd function as in the original paper where a rwd is given only if cursor is within an area of target
+"""
 
 seeds = [8721, 5467, 1092, 9372,2801]
-save_file = False
+save_file = True
 
 # Experimental set-up based on Izawa and Shadmer, 2011
 trials_x_perturbation = 40
@@ -22,7 +24,7 @@ perturbation_increase = 0.0176 # equivalent to 1 degree
 max_perturbation = perturbation_increase * n_pertubations
 target = 0.1056 # target angle : 6 degrees 
 y_star = torch.tensor([target],dtype=torch.float32)
-rwd_area = 0.01
+rwd_area = 0.01 # set to be lower than perturbation so that can drive adaptation
 
 # Set noise variables
 sensory_noise = 0.01
@@ -59,7 +61,7 @@ for s in seeds:
         actor.load_state_dict(models['Actor'])
         estimated_model = Mot_model(ln_rate=model_ln_rate,lamb=None,Fixed=False)
         estimated_model.load_state_dict(models['Est_model'])
-        mean_rwd = 0#models['Mean_rwd']
+        mean_rwd = 0
 
         # Initialise additional components
         model = Mot_model()
@@ -98,6 +100,7 @@ for s in seeds:
             y.requires_grad_(True)
             error = (y - y_star)**2 # it is actually a punishment
 
+            ## Give a rwd if reach is within target area
             if torch.sqrt(error) <= rwd_area:
                 rwd = 1
             else:

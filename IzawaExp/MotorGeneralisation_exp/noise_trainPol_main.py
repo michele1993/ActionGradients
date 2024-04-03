@@ -59,17 +59,16 @@ for s in seeds:
 
             # Compute differentiable rwd signal
             y.requires_grad_(True)
-            rwd = (y - y_star)**2 # it is actually a punishment
+            error = (y - y_star)**2 # it is actually a punishment
             trial_acc.append(torch.sqrt((true_y - y_star)**2).detach().mean().item())
             
             ## ====== Use running average to compute RPE =======
-            delta_rwd = rwd - mean_rwd
+            delta_rwd = error - mean_rwd
             mean_rwd += c_ln_rate * delta_rwd.detach()
+            #NOTE: we provide a dense rwd signal since for a policy to learn task completely from scratch based on success/fail is hard
+            delta_rwd[delta_rwd>0] = 1 
+            delta_rwd[delta_rwd<0] = -1 
             ## ==============================================
-
-            # For rwd-base learning give rwd of 1 if reach better than previous else -1
-            if beta == 0:
-               delta_rwd /= torch.abs(delta_rwd.detach()) 
 
             # Update the model
             est_y = estimated_model.step(action.detach())
@@ -78,7 +77,7 @@ for s in seeds:
 
             # Update actor based on combined action gradient
             est_y = estimated_model.step(action)  # re-estimate values since model has been updated
-            CAG.update(y, est_y, action, mu_a, std_a, delta_rwd)
+            CAG.update(y, est_y, action, mu_a, std_a, error, delta_rwd)
 
             # Store variables after pre-train (including final trials without a perturbation)
             if ep % t_print ==0:

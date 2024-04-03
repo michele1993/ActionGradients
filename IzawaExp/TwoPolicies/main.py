@@ -5,7 +5,6 @@ from Linear_motor_model  import Mot_model
 from Agent import *
 import torch
 import numpy as np
-from CombinedAG import CombActionGradient
 
 seeds = [0, 9284, 5992, 7861, 1594]
 

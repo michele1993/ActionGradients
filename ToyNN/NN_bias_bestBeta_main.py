@@ -98,7 +98,7 @@ for s in seeds:
                 comb_action_grad = b * E_grad/E_grad_norm + (1-b) * R_grad/R_grad_norm 
 
                 # Combine the two gradients norms
-                comb_action_grad *= b * E_grad_norm + (1-b) * R_grad_norm
+                #comb_action_grad *= b * E_grad_norm + (1-b) * R_grad_norm
 
                 action_variables = torch.cat([mu_a,std_a],dim=-1)
 
@@ -106,7 +106,7 @@ for s in seeds:
                 actor.ActionGrad_update(comb_action_grad, action_variables)
 
                 # Store variables after pre-train (including final trials without a perturbation)
-                if ep % t_print ==0:
+                if ep % t_print == 0:
                     accuracy = sum(trial_acc) / len(trial_acc)
                     #print('ep: ',ep, 'beta: ',b, 'accuracy: ',accuracy)
                     trial_acc = []

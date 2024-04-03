@@ -7,25 +7,28 @@ import matplotlib.pyplot as plt
 from CombinedAG import CombActionGradient
 
 " Generate policy with minimal noise across betas to test generalisation performance"
-seeds = [8721, 5467, 1092, 9372,2801]
 
-trials = 5000
+seeds = [8721, 5467, 1092, 9372,2801]
+trials = 4000
 t_print = 100
 save_file = False
 
+## ===== All the variables below set equal to the motor variability experiments as based on the same Izawa's set-up ====
 # Set noise variables
 sensory_noise = 0.01
-fixd_a_noise = 0.02 # set to experimental data value
+fixd_a_noise = 0.018 # set to experimental data value
+
+rwd_area = 0.01 
 
 # Set update variables
-a_ln_rate = 0.01
-c_ln_rate = 0.1
+a_ln_rate = 0.05
+c_ln_rate = 0.05
 model_ln_rate = 0.01
 betas = np.arange(0,11,1) /10.0
-#rbl_weight = [0.01, 0.01] #[1.5, 1.5]
-#ebl_weight = [1,75] #[0.1, 0.1]
-rbl_weight = [1, 1] #[1.5, 1.5]
-ebl_weight = [1,1] #[0.1, 0.1]
+rbl_weight = [0.002, 5] # [0.034, 100]
+ebl_weight = [0.2, 5] # [1.5, 100]
+## =================================
+
 
 ## Peturbation:
 #targets = [-30, -20, -10, 0, 10, 20, 30] # based on Izawa
@@ -59,17 +62,21 @@ for s in seeds:
 
             # Compute differentiable rwd signal
             y.requires_grad_(True)
-            rwd = (y - y_star)**2 # it is actually a punishment
-            trial_acc.append(torch.sqrt(rwd.detach()).mean().item())
-            
-            ## ====== Use running average to compute RPE =======
-            delta_rwd = rwd - mean_rwd
-            mean_rwd += c_ln_rate * delta_rwd.detach()
+            error = (y - y_star)**2 # it is actually a punishment
+            trial_acc.append(torch.sqrt(error.detach()).mean().item())
+
+            ## ====== Give a rwd if reach is within target area
+            #rwd = (torch.sqrt(error) <= rwd_area).int()
+            #rwd[rwd==0] = -1
             ## ==============================================
 
-            # For rwd-base learning give rwd of 1 if reach better than previous else -1
-            if b== 0:
-               delta_rwd /= torch.abs(delta_rwd.detach()) 
+            ## ====== Use running average to compute RPE =======
+            delta_rwd = error - mean_rwd
+            mean_rwd += c_ln_rate * delta_rwd.detach()
+            #NOTE: we provide a dense rwd signal since for a policy to learn task completely from scratch based on success/fail is hard
+            delta_rwd[delta_rwd>0] = 1 
+            delta_rwd[delta_rwd<0] = -1 
+            ## ==============================================
 
             # Update the model
             est_y = estimated_model.step(action.detach())
@@ -77,7 +84,7 @@ for s in seeds:
 
             # Update actor based on combined action gradient
             est_y = estimated_model.step(action)  # re-estimate values since model has been updated
-            CAG.update(y, est_y, action, mu_a, std_a, delta_rwd)
+            CAG.update(y, est_y, action, mu_a, std_a, error, delta_rwd)
 
             # Store variables after pre-train (including final trials without a perturbation)
             if ep % t_print ==0:

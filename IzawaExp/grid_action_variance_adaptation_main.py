@@ -16,7 +16,10 @@ tot_trials = 101
 t_print = 10 # how often compute mean of std_a to be stored
 target = 0.1056 # target angle : 6 degrees 
 y_star = torch.tensor([target],dtype=torch.float32)
+
+## ====== Key experiment parameter =======
 neg_RPE = True # use to fix RPE to either all positive or all negative
+## ========================================
 
 # Set noise variables
 sensory_noise = 0.01
@@ -73,20 +76,19 @@ for beta in betas:
 
             # Compute differentiable rwd signal
             y.requires_grad_(True)
-            rwd = (y - y_star)**2 # it is actually a punishment
+            error = (y - y_star)**2 # it is actually a punishment
             
             ## ====== Use running average to compute RPE =======
-            delta_rwd = rwd - mean_rwd
+            delta_rwd = error - mean_rwd
             mean_rwd += c_ln_rate * delta_rwd.detach()
             ## ==============================================
 
-            # For rwd-base learning give rwd of 1 if reach better than previous else -1
-            if beta == 0:
-               delta_rwd /= (torch.abs(delta_rwd.detach()) + 1e-12)
-               if neg_RPE:
-                    delta_rwd = - torch.abs(delta_rwd)
-               else: 
-                    delta_rwd = torch.abs(delta_rwd)
+            
+            # Fix to either all positive or all negative RPEs
+            if neg_RPE:
+                 delta_rwd = - torch.abs(delta_rwd)
+            else: 
+                 delta_rwd = torch.abs(delta_rwd)
 
             # Update the model
             est_y = estimated_model.step(action.detach())
@@ -95,7 +97,7 @@ for beta in betas:
             # Update actor based on combined action gradient
             #if ep > pre_train:
             est_y = estimated_model.step(action)  # re-estimate values since model has been updated
-            CAG.update(y, est_y, action, mu_a, std_a, delta_rwd)
+            CAG.update(y, est_y, action, mu_a, std_a, error, delta_rwd)
 
             # Store mean action std
             if ep % t_print == 0:

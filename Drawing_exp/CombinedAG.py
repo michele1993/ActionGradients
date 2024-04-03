@@ -1,14 +1,17 @@
 import torch 
+import numpy as np
 
 class CombActionGradient:
 
     def __init__(self, actor, action_s, rbl_weight=1, ebl_weight=1):
-
+        
+        assert np.isscalar(rbl_weight) and np.isscalar(ebl_weight), "ebl and rbl must be scalar"
 
         self.actor = actor
 
-        self.rbl_weight = torch.repeat_interleave(torch.tensor([rbl_weight]),2,dim=-1)
-        self.ebl_weight = torch.repeat_interleave(torch.tensor([ebl_weight]),2,dim=-1)
+        # multiply action_dim *2 since have mean and std params
+        self.rbl_weight = torch.repeat_interleave(torch.tensor([rbl_weight]),2*action_s,dim=-1)
+        self.ebl_weight = torch.repeat_interleave(torch.tensor([ebl_weight]),2*action_s,dim=-1)
     
     def computeRBLGrad(self, action, mu_a, std_a, delta_rwd):
         """ Compute reward-based learning (REINFORCE) action gradient 

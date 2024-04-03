@@ -5,7 +5,6 @@ from Linear_motor_model  import Mot_model
 from Agent import *
 import torch
 import numpy as np
-from CombinedAG import CombActionGradient
 
 
 """ Check how sum of a trained RBL poliy performs when sensory info becames available (suddenly or gradually) introducing the contribution of a trained EBL policy""" 

@@ -48,8 +48,6 @@ a_ln_rate = 0.0025 #0.0025 #0.0025
 c_ln_rate = 0.1
 model_ln_rate = 0.001
 grad_model_ln_rate = 0.001
-rbl_weight = [1,1]
-ebl_weight = [1,1]
 
 # Set experiment variables
 n_target_lines = 6
@@ -85,7 +83,7 @@ for s in seeds:
     estimated_model = ForwardModel(state_s=state_s,action_s=action_s, max_coord=large_circle_radium, ln_rate=model_ln_rate)
     cerebellum = GradientModel(action_s=action_s, n_state_s=state_s, ln_rate=grad_model_ln_rate, lr_decay= gradModel_lr_decay)
     actor = Actor(input_s= n_target_lines, batch_size=n_target_lines, ln_rate = a_ln_rate, learn_std=True,lr_decay=actor_lr_decay)
-    CAG = CombActionGradient(actor, action_s, rbl_weight, ebl_weight)
+    CAG = CombActionGradient(actor, action_s)
 
     tot_accuracy = []
     mean_rwd = 0
@@ -197,11 +195,15 @@ for s in seeds:
                     R_grad_norm = torch.norm(R_grad, dim=-1, keepdim=True)
                     E_grad_norm = torch.norm(E_grad, dim=-1, keepdim=True)
 
+                    ## ======== Combine grad angle and norm separatedly ======
                     # Combine the two gradients angles
-                    comb_action_grad = beta * E_grad/(E_grad_norm+1e-12) + (1-beta) * R_grad/(R_grad_norm +1e-12)
-
+                    #comb_action_grad = beta * E_grad/(E_grad_norm+1e-12) + (1-beta) * R_grad/(R_grad_norm +1e-12)
                     # Combine the two gradients norms
-                    comb_action_grad *= beta * E_grad_norm + (1-beta) * R_grad_norm
+                    #comb_action_grad *= beta * E_grad_norm + (1-beta) * R_grad_norm
+                    ## ======================================================
+
+                    #comb_action_grad = beta * E_grad + (1-beta) * R_grad
+                    comb_action_grad = beta * E_grad/(E_grad_norm+1e-12) + (1-beta) * R_grad/(R_grad_norm +1e-12)
 
                     ## ====== TRY: ADAM in action space: ======
                     #M = b_1 * M + (1-b_2) * comb_action_grad

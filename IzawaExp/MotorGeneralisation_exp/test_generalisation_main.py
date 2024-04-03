@@ -3,8 +3,6 @@ from Linear_motor_model  import Mot_model
 from Agent import *
 import torch
 import numpy as np
-import matplotlib.pyplot as plt
-from CombinedAG import CombActionGradient
 
 """ Load trained policy for each beta value and test generalisation performance """
 
@@ -57,6 +55,7 @@ for s in seeds:
 
         rwd = np.sqrt((true_y - y_star)**2) # it is actually a punishment
         betas_acc.append(rwd.mean())
+        #print(rwd,"\n")
 
     seed_acc.append(betas_acc)
     seed_train_acc.append(beta_train_acc)
@@ -67,14 +66,15 @@ seed_train_acc = np.array(seed_train_acc)
 ## ---- Select mean and std for corresponding values ----
 mean_seed_acc = seed_acc.mean(axis=0)
 std_seed_acc = seed_acc.std(axis=0)
-## Select values for beta=0,0.4,1 for plotting purposes
-# mixed with beta =0.4 since this is what we plotted for motor variab
+
+## Select values for beta=0,0.6,1 for plotting purposes
+# mixed with beta =0.6 since this is what we plotted for motor variab
 # to match Izawa findings
 RBL_mean = mean_seed_acc[0].squeeze()
-Mixed_mean = mean_seed_acc[4].squeeze()
+Mixed_mean = mean_seed_acc[6].squeeze()
 EBL_mean = mean_seed_acc[-1].squeeze()
 RBL_std = std_seed_acc[0].squeeze()
-Mixed_std = std_seed_acc[4].squeeze()
+Mixed_std = std_seed_acc[6].squeeze()
 EBL_std = std_seed_acc[-1].squeeze()
 
 ## ---- Select mean and std of policy value (slope of linear policy only) ----
@@ -84,10 +84,10 @@ std_train_acc = seed_train_acc.std(axis=0)
 # mixed with beta =0.4 since this is what we plotted for motor variab
 # to match Izawa findings
 RBL_mean_train_acc = mean_train_acc[0].squeeze()
-Mixed_mean_train_acc = mean_train_acc[4].squeeze()
+Mixed_mean_train_acc = mean_train_acc[6].squeeze()
 EBL_mean_train_acc = mean_train_acc[-1].squeeze()
 RBL_std_train_acc = std_train_acc[0].squeeze()
-Mixed_std_train_acc = std_train_acc[4].squeeze()
+Mixed_std_train_acc = std_train_acc[6].squeeze()
 EBL_std_train_acc = std_train_acc[-1].squeeze()
 
 

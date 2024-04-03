@@ -12,20 +12,23 @@ class CombActionGradient:
         self.rbl_weight = torch.tensor(rbl_weight).unsqueeze(0)
         self.ebl_weight = torch.tensor(ebl_weight).unsqueeze(0)
     
-    def update(self, y, est_y, action, mu_a, std_a, delta_rwd):
+    def update(self, y, est_y, action, mu_a, std_a, error, rwd):
         """ Perform update by comgining two gradient updates """
 
-        R_grad = self.computeRBLGrad(action, mu_a, std_a, delta_rwd)
-        E_grad = self.computeEBLGrad(y, est_y, action, mu_a, std_a, delta_rwd)
+        R_grad = self.computeRBLGrad(action, mu_a, std_a, rwd)
+        E_grad = self.computeEBLGrad(y, est_y, action, mu_a, std_a, error)
 
-        R_grad_norm = torch.norm(R_grad, dim=-1, keepdim=True)
-        E_grad_norm = torch.norm(E_grad, dim=-1, keepdim=True)
+        ## ====== Combine grad directions and norm separatedly ==========
+        #R_grad_norm = torch.norm(R_grad, dim=-1, keepdim=True)
+        #E_grad_norm = torch.norm(E_grad, dim=-1, keepdim=True)
+        ## Combine the two gradients angles
+        #comb_action_grad = self.beta * (self.ebl_weight * E_grad/E_grad_norm) + (1-self.beta) * (self.rbl_weight*R_grad/R_grad_norm) 
+        ## Combine the two gradients norms
+        #comb_action_grad *= self.beta * E_grad_norm + (1-self.beta) * R_grad_norm
+        ## ========================================================
 
-        # Combine the two gradients angles
-        comb_action_grad = self.beta * (self.ebl_weight * E_grad/E_grad_norm) + (1-self.beta) * (self.rbl_weight*R_grad/R_grad_norm) 
-
-        # Combine the two gradients norms
-        comb_action_grad *= self.beta * E_grad_norm + (1-self.beta) * R_grad_norm
+        # Combine the two gradients 
+        comb_action_grad = self.beta * (self.ebl_weight * E_grad) + (1-self.beta) * (self.rbl_weight*R_grad) 
 
         action_variables = torch.cat([mu_a, std_a],dim=-1)
         agent_grad = self.actor.ActionGrad_update(comb_action_grad, action_variables)
