@@ -42,7 +42,7 @@ fixd_a_noise = 0.001 #.0002 # set to experimental data value
 assert beta >= 0 and beta <= 1, "beta must be between 0 and 1 (inclusive)"
 gradModel_lr_decay = 1
 actor_lr_decay = 1
-a_ln_rate = 0.005
+a_ln_rate = 0 # NOTE: When load optimizer param also load ln_rate
 c_ln_rate = 0.1 #0.05
 model_ln_rate = 0.001
 grad_model_ln_rate = 0.001
@@ -231,10 +231,7 @@ for s in seeds:
         E_grad_norm = torch.norm(E_grad, dim=-1, keepdim=True)
 
         # Combine the two gradients angles
-        comb_action_grad = beta * E_grad/(E_grad_norm+1e-12) + (1-beta) * R_grad/(R_grad_norm +1e-12)
-
-        # Combine the two gradients norms
-        comb_action_grad *= beta * E_grad_norm + (1-beta) * R_grad_norm
+        comb_action_grad = beta * torch.clip(E_grad, -5,5) + (1-beta) * torch.clip(R_grad, -5, 5)
 
         a_variab = torch.cat([mu_a,std_a],dim=1) 
 
@@ -264,8 +261,8 @@ for s in seeds:
             ## Store gradients values for plotting purposes
             if norm_ebl_gradients:
                 ## Update learning rate:
-                actor.scheduler.step()
-                cerebellum.scheduler.step()
+                #actor.scheduler.step()
+                #cerebellum.scheduler.step()
                 norm_ebl_gradients = torch.cat(norm_ebl_gradients).mean()
                 norm_rbl_gradients = torch.cat(norm_rbl_gradients).mean()
                 norm_EBL_tot_grad.append(norm_ebl_gradients)

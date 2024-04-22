@@ -15,13 +15,13 @@ import matplotlib as mpl
 
 
 # Train a model with mixed grad
-beta = 1
+beta = 0.5
 
 seed = 91726 #94747    
 torch.manual_seed(seed) 
 np.random.seed(seed)
-save_file = False
-n_trials = 5000
+save_file = True
+n_trials = 4000
 model_pretrain = 100
 grad_pretrain = model_pretrain * 1
 t_print = 100
@@ -36,8 +36,8 @@ fixd_a_noise = 0.001 #.0002 # set to experimental data value
 assert beta >= 0 and beta <= 1, "beta must be between 0 and 1 (inclusive)"
 gradModel_lr_decay = 1
 actor_lr_decay = 1
-a_ln_rate = 0.0005 #0.001
-c_ln_rate = 0.05
+a_ln_rate = 0.001 #0.0005 #0.001
+c_ln_rate = 0.1
 model_ln_rate = 0.001
 grad_model_ln_rate = 0.001
 rbl_weight = [1,1]
@@ -181,10 +181,7 @@ for t in range(1,n_trials+1):
             E_grad_norm = torch.norm(E_grad, dim=-1, keepdim=True)
 
             # Combine the two gradients angles
-            comb_action_grad = beta * E_grad/(E_grad_norm+1e-12) + (1-beta) * R_grad/(R_grad_norm +1e-12)
-
-            # Combine the two gradients norms
-            comb_action_grad *= beta * E_grad_norm + (1-beta) * R_grad_norm
+            comb_action_grad = beta * torch.clip(E_grad, -5,5) + (1-beta) * torch.clip(R_grad, -5, 5)
 
             a_variab = torch.cat([mu_a,std_a],dim=1) 
 

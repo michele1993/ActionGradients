@@ -28,8 +28,8 @@ beta = args.beta
 step_x_update = args.step_x_update
 
     
-save_file = False
-n_episodes = 10000  # 10000 NOTE: For beta=0.5 use n_episodes=5000 (ie.early stopping) 
+save_file = True
+n_episodes = 15000  # 10000 NOTE: For beta=0.5 use n_episodes=5000 (ie.early stopping) 
 model_pretrain = 100
 grad_pretrain = model_pretrain * 1
 t_print = 100
@@ -44,7 +44,7 @@ fixd_a_noise = 0.0001 #.0002 # set to experimental data value
 assert beta >= 0 and beta <= 1, "beta must be between 0 and 1 (inclusive)"
 actor_lr_decay = 1#0.99
 gradModel_lr_decay = 1 #0.9
-a_ln_rate = 0.0025 #0.0025 #0.0025 
+a_ln_rate = 0.001 #0.0025 
 c_ln_rate = 0.1
 model_ln_rate = 0.001
 grad_model_ln_rate = 0.001
@@ -78,6 +78,7 @@ x_targ, y_targ = compute_targetLines(target_origin, n_target_lines, n_steps, lin
 
 for s in seeds:
     torch.manual_seed(s)
+    np.random.seed(s)
 
     ## Initialise different componets
     estimated_model = ForwardModel(state_s=state_s,action_s=action_s, max_coord=large_circle_radium, ln_rate=model_ln_rate)
@@ -186,8 +187,7 @@ for s in seeds:
                 dr_dy_dmu = dr_dy_da @ da_dmu
                 dr_dy_dstd = dr_dy_da @ da_dstd
 
-                # NOTE: I have checked that this gives the correct gradient
-                E_grad = torch.cat([dr_dy_dmu, dr_dy_dstd],dim=-1).squeeze().detach()
+                E_grad = torch.cat([dr_dy_dmu, dr_dy_dstd],dim=-1).squeeze().detach() # NOTE: I have checked that this gives the correct gradient
 
                 # Store gradients
                 if ep > grad_pretrain:
@@ -203,7 +203,8 @@ for s in seeds:
                     ## ======================================================
 
                     #comb_action_grad = beta * E_grad + (1-beta) * R_grad
-                    comb_action_grad = beta * E_grad/(E_grad_norm+1e-12) + (1-beta) * R_grad/(R_grad_norm +1e-12)
+                    comb_action_grad = beta * torch.clip(E_grad, -5,5) + (1-beta) * torch.clip(R_grad, -5, 5)
+                    #comb_action_grad = beta * E_grad/(E_grad_norm+1e-12) + (1-beta) * R_grad/(R_grad_norm +1e-12)
 
                     ## ====== TRY: ADAM in action space: ======
                     #M = b_1 * M + (1-b_2) * comb_action_grad
@@ -216,7 +217,8 @@ for s in seeds:
                     #R = torch.mean(R, dim=0, keepdim=True)
                     ## =======================================
 
-                    gradients.append(torch.clip(comb_action_grad,-5,5))
+                    #gradients.append(torch.clip(comb_action_grad,-5,5))
+                    gradients.append(comb_action_grad)
                     a_variab = torch.cat([mu_a,std_a],dim=1) 
                     action_variables.append(a_variab)
                     
@@ -251,8 +253,8 @@ for s in seeds:
             ## Store gradients values for plotting purposes
             if norm_ebl_gradients:
                 ## Update learning rate:
-                actor.scheduler.step()
-                cerebellum.scheduler.step()
+                #actor.scheduler.step()
+                #cerebellum.scheduler.step()
 
                 ## Store the norm of each action gradient
                 norm_ebl_gradients = torch.cat(norm_ebl_gradients).mean()

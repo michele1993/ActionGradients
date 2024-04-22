@@ -119,7 +119,7 @@ for b in betas:
 
         ## Store trajectories for plotting based only on 1 seed
         ## averaging over seeds wouldn't be fair
-        if s ==2310:
+        if s ==seeds[0]:
             tot_trajects.append(outcomes)
 
         # Store gradient norm for mixed model across seeds for top Beta
@@ -137,7 +137,8 @@ tot_RBL_grad = np.array(tot_RBL_grad).mean(axis=0)
 tot_EBL_grad = np.array(tot_EBL_grad).mean(axis=0)
 
 tot_training_acc = np.array(tot_training_acc).reshape(5,5,-1) # [betas, seeds, training_eps]
-mean_train_acc = tot_training_acc.mean(axis=1) # [betas, mean_training_acc]
+# Select training acc for beta = 0,0.5,1
+mean_train_acc = tot_training_acc.mean(axis=1)[[0,2,-1]] # [betas, mean_training_acc]
 std_train_acc = tot_training_acc.std(axis=1) # [betas, std_training_acc]
 
 tot_grad = np.stack([tot_RBL_grad, tot_EBL_grad])

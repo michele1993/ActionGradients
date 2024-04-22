@@ -95,7 +95,8 @@ for s in seeds:
                 E_grad_norm = torch.norm(E_grad, dim=-1, keepdim=True) + 1e-12
 
                 # Combine the two gradients angles
-                comb_action_grad = b * E_grad/E_grad_norm + (1-b) * R_grad/R_grad_norm 
+                #comb_action_grad = b * E_grad/E_grad_norm + (1-b) * R_grad/R_grad_norm 
+                comb_action_grad = b * E_grad + (1-b) * R_grad
 
                 # Combine the two gradients norms
                 #comb_action_grad *= b * E_grad_norm + (1-b) * R_grad_norm
