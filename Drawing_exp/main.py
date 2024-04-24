@@ -28,8 +28,8 @@ beta = args.beta
 step_x_update = args.step_x_update
 
     
-save_file = True
-n_episodes = 15000  # 10000 NOTE: For beta=0.5 use n_episodes=5000 (ie.early stopping) 
+save_file = False
+n_episodes = 10000  # 10000 NOTE: For beta=0.5 use n_episodes=5000 (ie.early stopping) 
 model_pretrain = 100
 grad_pretrain = model_pretrain * 1
 t_print = 100
@@ -150,7 +150,7 @@ for s in seeds:
             trial_acc.append(torch.mean(torch.sqrt(rwd.detach())).item())
             
             ## ====== Use running average to compute RPE =======
-            delta_rwd = rwd - mean_rwd
+            delta_rwd = rwd.detach() - mean_rwd
             mean_rwd += c_ln_rate * delta_rwd.detach()
             ## ==============================================
 
@@ -166,7 +166,7 @@ for s in seeds:
                 R_grad = CAG.computeRBLGrad(action, mu_a, std_a, delta_rwd)
                 
                 # Cortex-dependent gradient:
-                dr_dy = CAG.compute_drdy(r=delta_rwd,y=coord).unsqueeze(1)
+                dr_dy = CAG.compute_drdy(r=rwd,y=coord).unsqueeze(1)
 
                 # ---- Cerebellum-dependent gradient: -----
                 # Compute estimated dy_da by differentiating through forward model:
@@ -197,7 +197,7 @@ for s in seeds:
 
                     ## ======== Combine grad angle and norm separatedly ======
                     # Combine the two gradients angles
-                    #comb_action_grad = beta * E_grad/(E_grad_norm+1e-12) + (1-beta) * R_grad/(R_grad_norm +1e-12)
+                    comb_action_grad = beta * E_grad/(E_grad_norm+1e-12) + (1-beta) * R_grad/(R_grad_norm +1e-12)
                     # Combine the two gradients norms
                     #comb_action_grad *= beta * E_grad_norm + (1-beta) * R_grad_norm
                     ## ======================================================
@@ -218,7 +218,7 @@ for s in seeds:
                     ## =======================================
 
                     #gradients.append(torch.clip(comb_action_grad,-5,5))
-                    gradients.append(comb_action_grad)
+                    gradients.append(torch.clip(comb_action_grad,-5,5))
                     a_variab = torch.cat([mu_a,std_a],dim=1) 
                     action_variables.append(a_variab)
                     

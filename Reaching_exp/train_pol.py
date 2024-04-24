@@ -20,8 +20,8 @@ beta = 0.5
 seed = 91726 #94747    
 torch.manual_seed(seed) 
 np.random.seed(seed)
-save_file = True
-n_trials = 4000
+save_file = False
+n_trials = 3000
 model_pretrain = 100
 grad_pretrain = model_pretrain * 1
 t_print = 100
@@ -42,36 +42,34 @@ model_ln_rate = 0.001
 grad_model_ln_rate = 0.001
 rbl_weight = [1,1]
 ebl_weight = [1,1]
-
-# Set experiment variables needed to define targets 
-n_target_lines = 6
 n_steps = 1
 
 
 # Initialise env
 model = Kinematic_model()
-large_circle_radium = model.l1 + model.l2 # maximum reacheable coordinate based on lenght of entire arm 
-small_circle_radius = model.l1 # circle defined by radius of upper arm
 
 ## ====== Generate a target for each cue (i.e. points) by taking final point on 6 lines ====== 
-
+large_circle_radium = model.l1 + model.l2 # maximum reacheable coordinate based on lenght of entire arm 
+small_circle_radius = model.l1 # circle defined by radius of upper arm
 # Always start from the same initial origin point (x_0,y_0)
 # Compute origin as point tanget to shoulder in the middle of reaching space (arbitary choice)
-x_0 = 0
-y_0 = (large_circle_radium - small_circle_radius)/2 + small_circle_radius
-target_origin = [x_0,y_0]
-distance_from_target = 0.2
+x_0 = np.array([0])
+y_0 = np.array([(large_circle_radium - small_circle_radius)/2 + small_circle_radius])
 
-## ----- Check that target line length do not go outside reacheable space -----
-distance = np.sqrt(x_0**2 + y_0**2) # assuming shoulder is at (0,0)
+## Define target position based on neuroscince study:
+target_angles = np.array([-45, 0, 45]) * (2 * np.pi /360)
+target_distance = 0.05 # 5 cm from starting position
+n_target_lines = len(target_angles)
 
-## Bypass safety check as may be too stringent
-assert (distance_from_target + distance) < large_circle_radium  and (distance-distance_from_target) > small_circle_radius, "line_lenght needs to be shorter or risk of going outside reacheable space"  
+x_targ = torch.tensor(target_distance * np.cos(target_angles) + x_0 , dtype=torch.float32).unsqueeze(-1)
+y_targ = torch.tensor(target_distance * np.sin(target_angles) + y_0 , dtype=torch.float32).unsqueeze(-1)
 
-# Create single target by taking final point on a line
-x_targ, y_targ = compute_targetLines(target_origin, n_target_lines, n_steps, distance_from_target) # shape: [n_target_lines, n_steps] , allowing batch training
-x_targ = x_targ[:,-1:]
-y_targ = y_targ[:,-1:]
+## ===== Check by plotting ======
+#plt.scatter(x_targ, y_targ)
+#plt.scatter(x_0, y_0, color='r')
+#plt.show()
+## =======================
+
 
 
 ## ==== Initialise components ==========
@@ -109,8 +107,8 @@ tot_target_ebl_grads = []
 cue = torch.eye(n_target_lines)
 
 # Initialise starting position for each target line (start all from the same point)
-current_x = torch.tensor([x_0]).repeat(n_target_lines,1)
-current_y = torch.tensor([y_0]).repeat(n_target_lines,1)
+current_x = torch.tensor([x_0], dtype=torch.float32).repeat(n_target_lines,1)
+current_y = torch.tensor([y_0], dtype=torch.float32).repeat(n_target_lines,1)
 
 for t in range(1,n_trials+1):
 

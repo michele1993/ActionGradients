@@ -13,8 +13,8 @@ from utils import compute_targetLines
 import matplotlib as mpl
 
 """ 
-Load pre-trained policy in standard reaching and test how quickly it adapts to a 45' rotation perturbation, which is either applied all in 1 go or gradually
-over many trials (i.e., with 5' increments)
+Load pre-trained policy in standard reaching and test how quickly it adapts to a 20' rotation perturbation, which is either applied all in 1 go or incrementally
+over many trials (i.e., with 25' increments)
 """
 
 
@@ -24,13 +24,15 @@ parser.add_argument('--beta', '-b',type=float, nargs='?')
 ## Argparse variables:
 args = parser.parse_args()
 beta = args.beta
-incremental = False
+incremental = False # Only test for non-incremental !
 
 seeds = [8612, 1209, 5287, 3209, 2861]
     
 save_file = False
-n_trials = 180  # NOTE: For beta=0.5 use n_episodes=5000 (ie.early stopping) 
-t_print = 10
+n_trials = 100  
+trials_x_rotation = 30 # n. of baseline trials
+n_perturbed_trials = 70
+t_print = 1
 action_s = 2 # two angles in 2D kinematic arm model
 state_s = 2 # 2D space x,y-coord
 
@@ -48,45 +50,41 @@ model_ln_rate = 0.001
 grad_model_ln_rate = 0.001
 rbl_weight = [1,1]
 ebl_weight = [1,1]
+n_steps = 1
 
 # Perturbation variables
-trials_x_rotation = 20
-max_rotation = 45 * 0.01745 # convert to radiants
-c_rotation = 0
+max_rotation = 20 * 0.01745 # convert to radiants
 if incremental:
-    rotation_increment = 5 * 0.01745
+    rotation_increment = 2.5 * 0.01745
 else:
     rotation_increment = max_rotation
 
-# Set experiment variables needed to define targets 
-n_target_lines = 6
-n_steps = 1
 
 
 # Initialise env
 model = Kinematic_model()
-large_circle_radium = model.l1 + model.l2 # maximum reacheable coordinate based on lenght of entire arm 
-small_circle_radius = model.l1 # circle defined by radius of upper arm
 
 ## ====== Generate a target for each cue (i.e. points) by taking final point on 6 lines ====== 
-
+large_circle_radium = model.l1 + model.l2 # maximum reacheable coordinate based on lenght of entire arm 
+small_circle_radius = model.l1 # circle defined by radius of upper arm
 # Always start from the same initial origin point (x_0,y_0)
 # Compute origin as point tanget to shoulder in the middle of reaching space (arbitary choice)
-x_0 = 0
-y_0 = (large_circle_radium - small_circle_radius)/2 + small_circle_radius
-target_origin = [x_0,y_0]
-distance_from_target = 0.2
+x_0 = np.array([0])
+y_0 = np.array([(large_circle_radium - small_circle_radius)/2 + small_circle_radius])
 
-## ----- Check that target line length do not go outside reacheable space -----
-distance = np.sqrt(x_0**2 + y_0**2) # assuming shoulder is at (0,0)
+## Define target position based on neuroscince study:
+target_angles = np.array([-45, 0, 45]) * (2 * np.pi /360)
+target_distance = 0.05 # 5 cm from starting position
+n_target_lines = len(target_angles)
 
-## Bypass safety check as may be too stringent
-assert (distance_from_target + distance) < large_circle_radium  and (distance-distance_from_target) > small_circle_radius, "line_lenght needs to be shorter or risk of going outside reacheable space"  
+x_targ = torch.tensor(target_distance * np.cos(target_angles) + x_0 , dtype=torch.float32).unsqueeze(-1)
+y_targ = torch.tensor(target_distance * np.sin(target_angles) + y_0 , dtype=torch.float32).unsqueeze(-1)
 
-# Create single target by taking final point on a line
-x_targ, y_targ = compute_targetLines(target_origin, n_target_lines, n_steps, distance_from_target) # shape: [n_target_lines, n_steps] , allowing batch training
-x_targ = x_targ[:,-1:]
-y_targ = y_targ[:,-1:]
+## ===== Check by plotting ======
+#plt.scatter(x_targ, y_targ)
+#plt.scatter(x_0, y_0, color='r')
+#plt.show()
+## =======================
 
 
 tot_accuracy = []
@@ -115,8 +113,8 @@ tot_target_ebl_grads = []
 cue = torch.eye(n_target_lines)
 
 # Initialise starting position for each target line (start all from the same point)
-current_x = torch.tensor([x_0]).repeat(n_target_lines,1)
-current_y = torch.tensor([y_0]).repeat(n_target_lines,1)
+current_x = torch.tensor([x_0], dtype=torch.float32).repeat(n_target_lines,1)
+current_y = torch.tensor([y_0], dtype=torch.float32).repeat(n_target_lines,1)
 
 # Load pretrained models
 pretrain_beta = 0.5
@@ -127,6 +125,10 @@ models = torch.load(model_dir)
 
 
 seed_acc = []
+seed_x_outcome = []
+seed_y_outcome = []
+seed_action = []
+seed_direct_sensory_error = []
 for s in seeds:
     torch.manual_seed(s)
     np.random.seed(s)
@@ -146,23 +148,32 @@ for s in seeds:
 
     CAG = CombActionGradient(actor, action_s, rbl_weight, ebl_weight)
 
+    # Reset rotation to zero for each seed
+    c_rotation = 0
+    x_outcome = []
+    y_outcome = []
+    actions = []
+    direct_sensory_error = []
     for t in range(1,n_trials+1):
 
         # Sample action from Gaussian policy
         action, mu_a, std_a = actor.computeAction(cue, fixd_a_noise)
+        actions.append(action.detach().numpy())
 
         # Perform action in the env
         true_x_coord,true_y_coord = model.step(action)
 
         ## ======= Add rotation perturbation =======
         # need to re-compute (x,y) based on the roation size
-        if t % trials_x_rotation == 1 and np.abs(c_rotation) < max_rotation:
+        if t % trials_x_rotation == 0 and np.abs(c_rotation) < max_rotation:
             c_rotation += rotation_increment
         true_angle = torch.atan2(true_y_coord, true_x_coord) 
         radius = torch.sqrt(true_x_coord**2 + true_y_coord**2)
         rotated_angle = true_angle + c_rotation
         true_x_coord = radius * torch.cos(rotated_angle)
         true_y_coord = radius * torch.sin(rotated_angle)
+        x_outcome.append(true_x_coord.detach().numpy())
+        y_outcome.append(true_y_coord.detach().numpy())
         # ---------------------------------------
 
         # Add noise to sensory obs
@@ -198,6 +209,7 @@ for s in seeds:
 
         # Cortex-dependent gradient:
         dr_dy = CAG.compute_drdy(r=rwd,y=coord).unsqueeze(1)
+        direct_sensory_error.append(dr_dy.squeeze().detach().numpy())
 
         # ---- Cerebellum-dependent gradient: -----
         # Compute estimated dy_da by differentiating through forward model:
@@ -290,10 +302,28 @@ for s in seeds:
 
     #print("\n Seed: ",s, "Accuracy: ", accuracy, '\n')
     seed_acc.append(accuracy)
+    seed_x_outcome.append(x_outcome)
+    seed_y_outcome.append(y_outcome)
+    seed_action.append(actions)
+    seed_direct_sensory_error.append(direct_sensory_error)
 
+## Store the x-y coordinate of each reaching outcome and compute mean across all seeds
+seed_x_outcome = np.array(seed_x_outcome)
+seed_y_outcome = np.array(seed_y_outcome)
+mean_x_outcome = np.mean(seed_x_outcome,axis=0) 
+mean_y_outcome = np.mean(seed_y_outcome,axis=0) 
+mean_coord_outcome = np.stack([mean_x_outcome, mean_y_outcome])
+
+## Store the directed sensory errors and actions, so that can check whether the change in action correlates with the directed sensory errors
+## It should for EBL but not RBL, giving a behavioural measure of CB-dependent learning vs DA-dependent learning.
+seed_action = np.array(seed_action)
+seed_direct_sensory_error = np.array(seed_direct_sensory_error) 
+
+## Store accuracy
 seed_acc = np.array(seed_acc)
 mean_acc = np.mean(seed_acc)
 std_acc = np.std(seed_acc)
+
 print('Beta: ',beta)
 print('Incremental: ',incremental)
 print('Mean tot acc: ', mean_acc) 
@@ -350,8 +380,6 @@ else:
     data = 'Mixed_'+str(beta)
 model_dir = os.path.join(file_dir,'model',data+'_model.pt')
 
-current_x = torch.tensor([x_0]).repeat(n_target_lines,1)
-current_y = torch.tensor([y_0]).repeat(n_target_lines,1)
 origin = torch.cat([current_x,current_y],dim=1)
 if save_file:
     os.makedirs(file_dir, exist_ok=True)
@@ -360,9 +388,14 @@ if save_file:
     with open(os.path.join(file_dir,'commands.txt'), 'w') as f:
         f.write(command_line)
     torch.save({
+        'n_baseline_trl': trials_x_rotation,
+        'n_perturb_trl': n_perturbed_trials,
         'Accuracy': tot_accuracy,
         'Origin': origin,
         'Targets': torch.stack([x_targ,y_targ]),
+        'Outcomes': mean_coord_outcome,
+        'Actions': seed_action,
+        'Direct_error': seed_direct_sensory_error,
         'Actor': actor.state_dict(),
         'Net_optim': actor.optimizer.state_dict(),
         'Est_model': estimated_model.state_dict(),

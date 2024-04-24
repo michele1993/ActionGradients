@@ -25,7 +25,7 @@ seeds = [4634, 5637, 9920, 2310, 3021]
 if step_x_update == 1:
     betas = [0,0.25,0.5,0.75,1]
 else:
-    betas = [0,0.75,1]
+    betas = [0,0.5,1]
 
 save_results = False
 action_s = 2 # two angles in 2D kinematic arm model
@@ -119,13 +119,15 @@ for b in betas:
 
         ## Store trajectories for plotting based only on 1 seed
         ## averaging over seeds wouldn't be fair
-        if s ==seeds[0]:
+        if s ==seeds[4]:
             tot_trajects.append(outcomes)
 
         # Store gradient norm for mixed model across seeds for top Beta
-        if b == 0.75:
-            RBL_grad, EBL_grad = np.load(os.path.join(seed_dir, 'Mixed_0.75_gradients.npy'))
+        if b == 0:
+            RBL_grad, _ = np.load(os.path.join(seed_dir, 'RBL_gradients.npy'))
             tot_RBL_grad.append(RBL_grad)
+        if b == 1:
+            _, EBL_grad = np.load(os.path.join(seed_dir, 'EBL_gradients.npy'))
             tot_EBL_grad.append(EBL_grad)
     
     # Store accuracy for each beta value

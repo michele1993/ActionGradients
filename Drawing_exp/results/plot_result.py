@@ -40,7 +40,7 @@ train_acc_file = os.path.join(file_dir,str(update)+'_update','Mean_training_beta
 mean_train_acc = np.load(train_acc_file) # [betas, mean_train_acc]
 
 colors = ['tab:red','tab:green','tab:blue']
-t = np.arange(0,15000,100)
+t = np.arange(0,10000,100)
 i=0
 for acc in mean_train_acc:
     axs[0,4].plot(t,acc,color=colors[i], alpha=alpha)
