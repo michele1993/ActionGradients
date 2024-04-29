@@ -13,8 +13,7 @@ from utils import compute_targetLines
 import matplotlib as mpl
 
 """ 
-Load pre-trained policy in standard reaching and test how quickly it adapts to a 20' rotation perturbation, which is either applied all in 1 go or incrementally
-over many trials (i.e., with 25' increments)
+Load pre-trained policy in standard reaching and test how quickly it adapts to a 20' rotation perturbation, which is applied all in 1 go, following the set-up used by Tseng et al., 2007; J. of Neurophysiology.
 """
 
 
@@ -24,14 +23,14 @@ parser.add_argument('--beta', '-b',type=float, nargs='?')
 ## Argparse variables:
 args = parser.parse_args()
 beta = args.beta
-incremental = False # Only test for non-incremental !
 
 seeds = [8612, 1209, 5287, 3209, 2861]
     
 save_file = False
-n_trials = 100  
-trials_x_rotation = 30 # n. of baseline trials
-n_perturbed_trials = 70
+n_baseline_trials = 30 # n. of baseline trials
+n_perturbed_trials = 70 #70 # Considering catch trials
+n_washout_trials = 30
+n_trials = n_baseline_trials + n_perturbed_trials + n_washout_trials
 t_print = 1
 action_s = 2 # two angles in 2D kinematic arm model
 state_s = 2 # 2D space x,y-coord
@@ -44,7 +43,7 @@ fixd_a_noise = 0.001 #.0002 # set to experimental data value
 assert beta >= 0 and beta <= 1, "beta must be between 0 and 1 (inclusive)"
 gradModel_lr_decay = 1
 actor_lr_decay = 1
-a_ln_rate = 0 # NOTE: When load optimizer param also load ln_rate
+a_ln_rate = 0.0004 # NOTE: When load optimizer param also load ln_rate
 c_ln_rate = 0.1 #0.05
 model_ln_rate = 0.001
 grad_model_ln_rate = 0.001
@@ -54,10 +53,7 @@ n_steps = 1
 
 # Perturbation variables
 max_rotation = 20 * 0.01745 # convert to radiants
-if incremental:
-    rotation_increment = 2.5 * 0.01745
-else:
-    rotation_increment = max_rotation
+rotation_increment = max_rotation
 
 
 
@@ -87,10 +83,7 @@ y_targ = torch.tensor(target_distance * np.sin(target_angles) + y_0 , dtype=torc
 ## =======================
 
 
-tot_accuracy = []
 mean_rwd = torch.zeros(n_target_lines,1)
-trial_acc = []
-model_losses = []
 
 norm_ebl_gradients = []
 norm_rbl_gradients = []
@@ -144,12 +137,11 @@ for s in seeds:
 
     actor = Actor(input_s= n_target_lines, ln_rate = a_ln_rate, learn_std=True,lr_decay=actor_lr_decay)
     actor.load_state_dict(models['Actor'])
-    actor.optimizer.load_state_dict(models['Net_optim'])
+    #actor.optimizer.load_state_dict(models['Net_optim'])
 
     CAG = CombActionGradient(actor, action_s, rbl_weight, ebl_weight)
 
-    # Reset rotation to zero for each seed
-    c_rotation = 0
+    tot_accuracy = []
     x_outcome = []
     y_outcome = []
     actions = []
@@ -165,13 +157,13 @@ for s in seeds:
 
         ## ======= Add rotation perturbation =======
         # need to re-compute (x,y) based on the roation size
-        if t % trials_x_rotation == 0 and np.abs(c_rotation) < max_rotation:
-            c_rotation += rotation_increment
-        true_angle = torch.atan2(true_y_coord, true_x_coord) 
+        angle = torch.atan2(true_y_coord, true_x_coord) 
         radius = torch.sqrt(true_x_coord**2 + true_y_coord**2)
-        rotated_angle = true_angle + c_rotation
-        true_x_coord = radius * torch.cos(rotated_angle)
-        true_y_coord = radius * torch.sin(rotated_angle)
+        ## ------- If perturbed trials, rotate the angle
+        if t > n_baseline_trials and t < (n_baseline_trials + n_perturbed_trials):
+            angle += rotation_increment
+        true_x_coord = radius * torch.cos(angle)
+        true_y_coord = radius * torch.sin(angle)
         x_outcome.append(true_x_coord.detach().numpy())
         y_outcome.append(true_y_coord.detach().numpy())
         # ---------------------------------------
@@ -188,7 +180,7 @@ for s in seeds:
         rwd = (coord[:,0:1] - x_targ)**2 + (coord[:,1:2] - y_targ)**2 # it is actually a punishment
         true_rwd = (true_x_coord - x_targ)**2 + (true_y_coord - y_targ)**2 # it is actually a punishment
 
-        trial_acc.append(torch.mean(torch.sqrt(true_rwd.detach())).item())
+        tot_accuracy.append(torch.mean(torch.sqrt(true_rwd.detach())).item())
         
         ## ====== Use running average to compute RPE =======
         delta_rwd = rwd - mean_rwd 
@@ -201,7 +193,6 @@ for s in seeds:
         state_action = torch.cat([current_x,current_y,action],dim=1)
         est_coord = estimated_model.step(state_action.detach())
         model_loss = estimated_model.update(x_coord.detach(), y_coord.detach(), est_coord)
-        model_losses.append(model_loss.detach()/n_steps)
 
         # Compute gradients 
         est_coord = estimated_model.step(state_action)  # re-estimate values since model has been updated
@@ -244,9 +235,14 @@ for s in seeds:
 
         # Combine the two gradients angles
         comb_action_grad = beta * torch.clip(E_grad, -5,5) + (1-beta) * torch.clip(R_grad, -5, 5)
+        #comb_action_grad = beta * E_grad + (1-beta) * R_grad
 
         a_variab = torch.cat([mu_a,std_a],dim=1) 
 
+        ## In the original paper have catch trials, where in 17% of perturbed block trial, the perturbation was removed!
+        ## Include catch trials
+        #catch_trials = np.random.randint(100)
+        #if catch_trials<83: #83
         actor.ActionGrad_update(comb_action_grad, a_variab)
         
         # Store the gradient magnitude for plotting purposes
@@ -258,50 +254,38 @@ for s in seeds:
         rbl_mu_gradients.append(torch.mean(R_grad[:,0:2], dim=0))
 
 
-        # Store variables after pre-train (including final trials without a perturbation)
-        if t % t_print ==0:
-            accuracy = sum(trial_acc) / len(trial_acc)
-            m_loss = sum(model_losses) / len(model_losses)
-            #print("Trial: ",t)
-            #print("Accuracy: ",accuracy)
-            #print("std_a: ", std_a)
-            #print("Model Loss: ", m_loss)
-            tot_accuracy.append(accuracy)
-            trial_acc = []
-            model_losses = []
-
             ## Store gradients values for plotting purposes
-            if norm_ebl_gradients:
-                ## Update learning rate:
-                #actor.scheduler.step()
-                #cerebellum.scheduler.step()
-                norm_ebl_gradients = torch.cat(norm_ebl_gradients).mean()
-                norm_rbl_gradients = torch.cat(norm_rbl_gradients).mean()
-                norm_EBL_tot_grad.append(norm_ebl_gradients)
-                norm_RBL_tot_grad.append(norm_rbl_gradients)
-                norm_ebl_gradients = []
-                norm_rbl_gradients = []
+        if norm_ebl_gradients:
+            ## Update learning rate:
+            #actor.scheduler.step()
+            #cerebellum.scheduler.step()
+            norm_ebl_gradients = torch.cat(norm_ebl_gradients).mean()
+            norm_rbl_gradients = torch.cat(norm_rbl_gradients).mean()
+            norm_EBL_tot_grad.append(norm_ebl_gradients)
+            norm_RBL_tot_grad.append(norm_rbl_gradients)
+            norm_ebl_gradients = []
+            norm_rbl_gradients = []
 
-                ebl_mu_gradients = torch.stack(ebl_mu_gradients).mean(dim=0)
-                rbl_mu_gradients = torch.stack(rbl_mu_gradients).mean(dim=0)
-                EBL_mu_tot_grad.append(ebl_mu_gradients)
-                RBL_mu_tot_grad.append(rbl_mu_gradients)
-                ebl_mu_gradients = []
-                rbl_mu_gradients = []
-                
-                ## ====== Diagnostic variables ========
-                #target_eblGrad = torch.stack(target_ebl_grads).mean(dim=0).norm()
-                #grad_loss = torch.cat(grad_model_loss).mean()
-                #print("\nTarget grad: ", target_eblGrad)
-                #print("Grad Loss: ", grad_loss, "\n")
-                #tot_target_ebl_grads.append(target_eblGrad)
-                #tot_grad_model_loss.append(grad_loss) 
-                #target_ebl_grads = []
-                #grad_model_loss = []
-                ## ===================================
+            ebl_mu_gradients = torch.stack(ebl_mu_gradients).mean(dim=0)
+            rbl_mu_gradients = torch.stack(rbl_mu_gradients).mean(dim=0)
+            EBL_mu_tot_grad.append(ebl_mu_gradients)
+            RBL_mu_tot_grad.append(rbl_mu_gradients)
+            ebl_mu_gradients = []
+            rbl_mu_gradients = []
+            
+            ## ====== Diagnostic variables ========
+            #target_eblGrad = torch.stack(target_ebl_grads).mean(dim=0).norm()
+            #grad_loss = torch.cat(grad_model_loss).mean()
+            #print("\nTarget grad: ", target_eblGrad)
+            #print("Grad Loss: ", grad_loss, "\n")
+            #tot_target_ebl_grads.append(target_eblGrad)
+            #tot_grad_model_loss.append(grad_loss) 
+            #target_ebl_grads = []
+            #grad_model_loss = []
+            ## ===================================
 
     #print("\n Seed: ",s, "Accuracy: ", accuracy, '\n')
-    seed_acc.append(accuracy)
+    seed_acc.append(tot_accuracy)
     seed_x_outcome.append(x_outcome)
     seed_y_outcome.append(y_outcome)
     seed_action.append(actions)
@@ -314,6 +298,7 @@ mean_x_outcome = np.mean(seed_x_outcome,axis=0)
 mean_y_outcome = np.mean(seed_y_outcome,axis=0) 
 mean_coord_outcome = np.stack([mean_x_outcome, mean_y_outcome])
 
+
 ## Store the directed sensory errors and actions, so that can check whether the change in action correlates with the directed sensory errors
 ## It should for EBL but not RBL, giving a behavioural measure of CB-dependent learning vs DA-dependent learning.
 seed_action = np.array(seed_action)
@@ -325,9 +310,16 @@ mean_acc = np.mean(seed_acc)
 std_acc = np.std(seed_acc)
 
 print('Beta: ',beta)
-print('Incremental: ',incremental)
 print('Mean tot acc: ', mean_acc) 
 print('Std_err tot acc: ', std_acc/np.sqrt(len(seeds))) 
+
+## ========== Visualization variables ============
+trials = np.arange(0,n_trials)
+plt.plot(trials, tot_accuracy)
+plt.show()
+exit()
+## ==============================================
+
 ## ===== Plot diagnostic data ======
 font_s =7
 mpl.rc('font', size=font_s)
