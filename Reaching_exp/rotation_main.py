@@ -6,6 +6,7 @@ from Forward_model import ForwardModel
 from Gradient_model import GradientModel
 from actor import Actor
 import torch
+import torch.nn as nn
 import numpy as np
 import matplotlib.pyplot as plt
 from CombinedAG import CombActionGradient
@@ -43,7 +44,7 @@ fixd_a_noise = 0.001 #.0002 # set to experimental data value
 assert beta >= 0 and beta <= 1, "beta must be between 0 and 1 (inclusive)"
 gradModel_lr_decay = 1
 actor_lr_decay = 1
-a_ln_rate = 0.0004 # NOTE: When load optimizer param also load ln_rate
+a_ln_rate = 0.0001 # NOTE: When load optimizer param also load ln_rate
 c_ln_rate = 0.1 #0.05
 model_ln_rate = 0.001
 grad_model_ln_rate = 0.001
@@ -54,7 +55,6 @@ n_steps = 1
 # Perturbation variables
 max_rotation = 20 * 0.01745 # convert to radiants
 rotation_increment = max_rotation
-
 
 
 # Initialise env
@@ -106,8 +106,8 @@ tot_target_ebl_grads = []
 cue = torch.eye(n_target_lines)
 
 # Initialise starting position for each target line (start all from the same point)
-current_x = torch.tensor([x_0], dtype=torch.float32).repeat(n_target_lines,1)
-current_y = torch.tensor([y_0], dtype=torch.float32).repeat(n_target_lines,1)
+origin_x = torch.tensor([x_0], dtype=torch.float32).repeat(n_target_lines,1)
+origin_y = torch.tensor([y_0], dtype=torch.float32).repeat(n_target_lines,1)
 
 # Load pretrained models
 pretrain_beta = 0.5
@@ -118,6 +118,7 @@ models = torch.load(model_dir)
 
 
 seed_acc = []
+seed_angle_acc = []
 seed_x_outcome = []
 seed_y_outcome = []
 seed_action = []
@@ -142,6 +143,7 @@ for s in seeds:
     CAG = CombActionGradient(actor, action_s, rbl_weight, ebl_weight)
 
     tot_accuracy = []
+    tot_angle_accuracy = []
     x_outcome = []
     y_outcome = []
     actions = []
@@ -159,18 +161,34 @@ for s in seeds:
         # need to re-compute (x,y) based on the roation size
         angle = torch.atan2(true_y_coord, true_x_coord) 
         radius = torch.sqrt(true_x_coord**2 + true_y_coord**2)
+
         ## ------- If perturbed trials, rotate the angle
         if t > n_baseline_trials and t < (n_baseline_trials + n_perturbed_trials):
             angle += rotation_increment
         true_x_coord = radius * torch.cos(angle)
         true_y_coord = radius * torch.sin(angle)
-        x_outcome.append(true_x_coord.detach().numpy())
-        y_outcome.append(true_y_coord.detach().numpy())
         # ---------------------------------------
 
         # Add noise to sensory obs
         x_coord = true_x_coord.detach() + torch.randn_like(true_x_coord) * sensory_noise 
         y_coord = true_y_coord.detach() + torch.randn_like(true_y_coord) * sensory_noise 
+        x_outcome.append(x_coord.detach().numpy())
+        y_outcome.append(y_coord.detach().numpy())
+
+        ## ======= Compute accuracy in angle direction ======
+        # 1st: need to compute xy-dir of current reach relative to the arm starting point (origin_x, origin_y)
+        x_dir = true_x_coord.detach() #- origin_x
+        y_dir = true_y_coord.detach() #- origin_y
+        xy_dir = torch.cat([x_dir, y_dir], dim=1) 
+        xy_dir /= torch.norm(xy_dir, dim =1, keepdim=True) + 1e-12
+        # 2nd: need to compute the target xy-dir relative to the arm starting point
+        x_dir_target = x_targ #- origin_x
+        y_dir_target = y_targ #- origin_y
+        xy_dir_target = torch.cat([x_dir_target, y_dir_target], dim=1)
+        xy_dir_target /= torch.norm(xy_dir_target, dim =1, keepdim=True) + 1e-12
+        angle_error = torch.arccos(torch.clip(torch.sum(xy_dir * xy_dir_target, dim=-1),-1,1))
+        tot_angle_accuracy.append(torch.mean(angle_error))
+        ## ========================================
 
         # Compute differentiable rwd signal
         coord = torch.cat([x_coord,y_coord], dim=1) 
@@ -190,7 +208,7 @@ for s in seeds:
         ## ==============================================
 
         # Update the model
-        state_action = torch.cat([current_x,current_y,action],dim=1)
+        state_action = torch.cat([origin_x,origin_y,action],dim=1)
         est_coord = estimated_model.step(state_action.detach())
         model_loss = estimated_model.update(x_coord.detach(), y_coord.detach(), est_coord)
 
@@ -241,9 +259,11 @@ for s in seeds:
 
         ## In the original paper have catch trials, where in 17% of perturbed block trial, the perturbation was removed!
         ## Include catch trials
-        #catch_trials = np.random.randint(100)
-        #if catch_trials<83: #83
-        actor.ActionGrad_update(comb_action_grad, a_variab)
+        catch_trials = np.random.randint(100)
+        if t > n_baseline_trials and t < (n_baseline_trials + n_perturbed_trials) and catch_trials>83:
+            pass
+        else:
+            actor.ActionGrad_update(comb_action_grad, a_variab)
         
         # Store the gradient magnitude for plotting purposes
         norm_ebl_gradients.append(E_grad_norm)
@@ -254,7 +274,7 @@ for s in seeds:
         rbl_mu_gradients.append(torch.mean(R_grad[:,0:2], dim=0))
 
 
-            ## Store gradients values for plotting purposes
+        ## Store gradients values for plotting purposes
         if norm_ebl_gradients:
             ## Update learning rate:
             #actor.scheduler.step()
@@ -286,6 +306,7 @@ for s in seeds:
 
     #print("\n Seed: ",s, "Accuracy: ", accuracy, '\n')
     seed_acc.append(tot_accuracy)
+    seed_angle_acc.append(tot_angle_accuracy)
     seed_x_outcome.append(x_outcome)
     seed_y_outcome.append(y_outcome)
     seed_action.append(actions)
@@ -294,9 +315,9 @@ for s in seeds:
 ## Store the x-y coordinate of each reaching outcome and compute mean across all seeds
 seed_x_outcome = np.array(seed_x_outcome)
 seed_y_outcome = np.array(seed_y_outcome)
-mean_x_outcome = np.mean(seed_x_outcome,axis=0) 
-mean_y_outcome = np.mean(seed_y_outcome,axis=0) 
-mean_coord_outcome = np.stack([mean_x_outcome, mean_y_outcome])
+#mean_x_outcome = np.mean(seed_x_outcome,axis=0) 
+#mean_y_outcome = np.mean(seed_y_outcome,axis=0) 
+coord_outcome = np.concatenate([seed_x_outcome, seed_y_outcome],axis=-1)
 
 
 ## Store the directed sensory errors and actions, so that can check whether the change in action correlates with the directed sensory errors
@@ -308,14 +329,15 @@ seed_direct_sensory_error = np.array(seed_direct_sensory_error)
 seed_acc = np.array(seed_acc)
 mean_acc = np.mean(seed_acc)
 std_acc = np.std(seed_acc)
+seed_angle_acc = np.array(seed_angle_acc)
+mean_angle_acc = seed_angle_acc.mean(axis=0)/ (2 * np.pi /360)
 
 print('Beta: ',beta)
-print('Mean tot acc: ', mean_acc) 
-print('Std_err tot acc: ', std_acc/np.sqrt(len(seeds))) 
+print('Mean tot acc: ', mean_angle_acc) 
 
 ## ========== Visualization variables ============
 trials = np.arange(0,n_trials)
-plt.plot(trials, tot_accuracy)
+plt.scatter(trials, mean_angle_acc)
 plt.show()
 exit()
 ## ==============================================
@@ -372,7 +394,7 @@ else:
     data = 'Mixed_'+str(beta)
 model_dir = os.path.join(file_dir,'model',data+'_model.pt')
 
-origin = torch.cat([current_x,current_y],dim=1)
+origin = torch.cat([origin_x,origin_y],dim=1)
 if save_file:
     os.makedirs(file_dir, exist_ok=True)
     # Create directory if it did't exist before
@@ -385,7 +407,7 @@ if save_file:
         'Accuracy': tot_accuracy,
         'Origin': origin,
         'Targets': torch.stack([x_targ,y_targ]),
-        'Outcomes': mean_coord_outcome,
+        'Outcomes': coord_outcome,
         'Actions': seed_action,
         'Direct_error': seed_direct_sensory_error,
         'Actor': actor.state_dict(),
