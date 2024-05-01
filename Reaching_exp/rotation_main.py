@@ -27,7 +27,7 @@ beta = args.beta
 
 seeds = [8612, 1209, 5287, 3209, 2861]
     
-save_file = False
+save_file = True
 n_baseline_trials = 30 # n. of baseline trials
 n_perturbed_trials = 70 #70 # Considering catch trials
 n_washout_trials = 30
@@ -38,13 +38,13 @@ state_s = 2 # 2D space x,y-coord
 
 # Set noise variables
 sensory_noise = 0.01 #0.25
-fixd_a_noise = 0.001 #.0002 # set to experimental data value
+fixd_a_noise = 0.025#0.001 #.0002 # set to experimental data value
 
 # Set update variables
 assert beta >= 0 and beta <= 1, "beta must be between 0 and 1 (inclusive)"
 gradModel_lr_decay = 1
 actor_lr_decay = 1
-a_ln_rate = 0.0001 # NOTE: When load optimizer param also load ln_rate
+a_ln_rate = 0.0001#0.000075 # NOTE: When load optimizer param also load ln_rate
 c_ln_rate = 0.1 #0.05
 model_ln_rate = 0.001
 grad_model_ln_rate = 0.001
@@ -112,7 +112,7 @@ origin_y = torch.tensor([y_0], dtype=torch.float32).repeat(n_target_lines,1)
 # Load pretrained models
 pretrain_beta = 0.5
 file_dir = os.path.dirname(os.path.abspath(__file__))
-file_dir = os.path.join(file_dir,'results') # For the mixed model
+file_dir = os.path.join(file_dir,'results','model') # For the mixed model
 model_dir = os.path.join(file_dir,'Mixed_'+str(pretrain_beta)+'_model.pt') # For the mixed model
 models = torch.load(model_dir)
 
@@ -163,7 +163,11 @@ for s in seeds:
         radius = torch.sqrt(true_x_coord**2 + true_y_coord**2)
 
         ## ------- If perturbed trials, rotate the angle
-        if t > n_baseline_trials and t < (n_baseline_trials + n_perturbed_trials):
+        ## In the original paper have catch trials, where in 17% of perturbed block trial, the perturbation was removed!
+        ## Include random catch trials: 
+        catch_trials = np.random.randint(100)
+        if t > n_baseline_trials and t < (n_baseline_trials + n_perturbed_trials) and catch_trials<83:
+        #if t > n_baseline_trials and t < (n_baseline_trials + n_perturbed_trials):
             angle += rotation_increment
         true_x_coord = radius * torch.cos(angle)
         true_y_coord = radius * torch.sin(angle)
@@ -258,12 +262,12 @@ for s in seeds:
         a_variab = torch.cat([mu_a,std_a],dim=1) 
 
         ## In the original paper have catch trials, where in 17% of perturbed block trial, the perturbation was removed!
-        ## Include catch trials
-        catch_trials = np.random.randint(100)
-        if t > n_baseline_trials and t < (n_baseline_trials + n_perturbed_trials) and catch_trials>83:
-            pass
-        else:
-            actor.ActionGrad_update(comb_action_grad, a_variab)
+        ## Include random catch trials in perturbed phase only
+        #catch_trials = np.random.randint(100)
+        #if t > n_baseline_trials and t < (n_baseline_trials + n_perturbed_trials) and catch_trials>100:#83:
+        #    pass
+        #else:
+        actor.ActionGrad_update(comb_action_grad, a_variab)
         
         # Store the gradient magnitude for plotting purposes
         norm_ebl_gradients.append(E_grad_norm)
@@ -327,19 +331,20 @@ seed_direct_sensory_error = np.array(seed_direct_sensory_error)
 
 ## Store accuracy
 seed_acc = np.array(seed_acc)
-mean_acc = np.mean(seed_acc)
-std_acc = np.std(seed_acc)
+mean_acc = np.mean(seed_acc,axis=0)
+std_acc = np.std(seed_acc,axis=0)
 seed_angle_acc = np.array(seed_angle_acc)
 mean_angle_acc = seed_angle_acc.mean(axis=0)/ (2 * np.pi /360)
 
 print('Beta: ',beta)
-print('Mean tot acc: ', mean_angle_acc) 
+print('Mean angle acc: ', mean_angle_acc) 
+print('Mean tot acc: ', mean_acc) 
 
 ## ========== Visualization variables ============
-trials = np.arange(0,n_trials)
-plt.scatter(trials, mean_angle_acc)
-plt.show()
-exit()
+#trials = np.arange(0,n_trials)
+#plt.scatter(trials, mean_angle_acc)
+#plt.show()
+#exit()
 ## ==============================================
 
 ## ===== Plot diagnostic data ======
@@ -392,19 +397,21 @@ elif beta ==1:
     data = 'EBL'
 else:
     data = 'Mixed_'+str(beta)
-model_dir = os.path.join(file_dir,'model',data+'_model.pt')
+
+model_dir = os.path.join(file_dir,data+'_results.pt')
 
 origin = torch.cat([origin_x,origin_y],dim=1)
 if save_file:
     os.makedirs(file_dir, exist_ok=True)
     # Create directory if it did't exist before
     # Store command line
-    with open(os.path.join(file_dir,'commands.txt'), 'w') as f:
-        f.write(command_line)
+    #with open(os.path.join(file_dir,'commands.txt'), 'w') as f:
+    #    f.write(command_line)
     torch.save({
-        'n_baseline_trl': trials_x_rotation,
+        'n_baseline_trl': n_baseline_trials,
         'n_perturb_trl': n_perturbed_trials,
-        'Accuracy': tot_accuracy,
+        'XY_accuracy': seed_acc,
+        'Angle_accyracy': seed_angle_acc,
         'Origin': origin,
         'Targets': torch.stack([x_targ,y_targ]),
         'Outcomes': coord_outcome,
@@ -416,4 +423,4 @@ if save_file:
         'Model_optim': estimated_model.optimiser.state_dict(),
     }, model_dir)
     grads = torch.stack([torch.tensor(norm_RBL_tot_grad), torch.tensor(norm_EBL_tot_grad)])
-    np.save(os.path.join(file_dir,data+'_gradients.npy'), grads.numpy())
+    np.save(os.path.join(file_dir,data + '_gradients.npy'), grads.numpy())

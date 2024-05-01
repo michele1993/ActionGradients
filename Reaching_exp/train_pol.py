@@ -209,7 +209,7 @@ for t in range(1,n_trials+1):
 ## ===== Save results =========
 # Create directory to store results
 file_dir = os.path.dirname(os.path.abspath(__file__))
-file_dir = os.path.join(file_dir,'results')
+file_dir = os.path.join(file_dir,'results','model')
 
 # Store model
 if beta ==0:
