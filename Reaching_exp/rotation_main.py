@@ -27,7 +27,7 @@ beta = args.beta
 
 seeds = [8612, 1209, 5287, 3209, 2861]
     
-save_file = True
+save_file = False
 n_baseline_trials = 30 # n. of baseline trials
 n_perturbed_trials = 70 #70 # Considering catch trials
 n_washout_trials = 30
@@ -37,8 +37,8 @@ action_s = 2 # two angles in 2D kinematic arm model
 state_s = 2 # 2D space x,y-coord
 
 # Set noise variables
-sensory_noise = 0.01 #0.25
-fixd_a_noise = 0.025#0.001 #.0002 # set to experimental data value
+sensory_noise = 0.001 #0.25
+fixd_a_noise = 0.025 #0.025#0.001 #.0002 # set to experimental data value
 
 # Set update variables
 assert beta >= 0 and beta <= 1, "beta must be between 0 and 1 (inclusive)"
@@ -181,14 +181,10 @@ for s in seeds:
 
         ## ======= Compute accuracy in angle direction ======
         # 1st: need to compute xy-dir of current reach relative to the arm starting point (origin_x, origin_y)
-        x_dir = true_x_coord.detach() #- origin_x
-        y_dir = true_y_coord.detach() #- origin_y
-        xy_dir = torch.cat([x_dir, y_dir], dim=1) 
+        xy_dir = torch.cat([true_x_coord.detach(), true_y_coord.detach()], dim=1) 
         xy_dir /= torch.norm(xy_dir, dim =1, keepdim=True) + 1e-12
         # 2nd: need to compute the target xy-dir relative to the arm starting point
-        x_dir_target = x_targ #- origin_x
-        y_dir_target = y_targ #- origin_y
-        xy_dir_target = torch.cat([x_dir_target, y_dir_target], dim=1)
+        xy_dir_target = torch.cat([x_targ, y_targ], dim=1)
         xy_dir_target /= torch.norm(xy_dir_target, dim =1, keepdim=True) + 1e-12
         angle_error = torch.arccos(torch.clip(torch.sum(xy_dir * xy_dir_target, dim=-1),-1,1))
         tot_angle_accuracy.append(torch.mean(angle_error))
@@ -199,8 +195,8 @@ for s in seeds:
         coord.requires_grad_(True)
         #coord = torch.cat([x_coord,y_coord], dim=1)
 
-        rwd = (coord[:,0:1] - x_targ)**2 + (coord[:,1:2] - y_targ)**2 # it is actually a punishment
-        true_rwd = (true_x_coord - x_targ)**2 + (true_y_coord - y_targ)**2 # it is actually a punishment
+        rwd = (x_targ - coord[:,0:1])**2 + (y_targ - coord[:,1:2])**2 # it is actually a punishment
+        true_rwd = (x_targ - true_x_coord)**2 + (y_targ - true_y_coord)**2 # it is actually a punishment
 
         tot_accuracy.append(torch.mean(torch.sqrt(true_rwd.detach())).item())
         
@@ -222,7 +218,9 @@ for s in seeds:
 
         # Cortex-dependent gradient:
         dr_dy = CAG.compute_drdy(r=rwd,y=coord).unsqueeze(1)
-        direct_sensory_error.append(dr_dy.squeeze().detach().numpy())
+        #NOTE: The gradient dr/dy gives you the direction in y to increase the error (i.e., maximum ascent)
+        ## To get the actual directed error need to change the sign of dr/dy (torch optimi does this implictly when calling opt.step())
+        direct_sensory_error.append(dr_dy.squeeze().detach().numpy() *(-1)) 
 
         # ---- Cerebellum-dependent gradient: -----
         # Compute estimated dy_da by differentiating through forward model:
