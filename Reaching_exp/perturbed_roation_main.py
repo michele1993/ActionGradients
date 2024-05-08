@@ -14,7 +14,7 @@ from utils import compute_targetLines
 import matplotlib as mpl
 
 """ 
-Load pre-trained policy in standard reaching and test how quickly it adapts to a 20' rotation perturbation, which is applied all in 1 go, following the set-up used by Tseng et al., 2007; J. of Neurophysiology.
+Load pre-trained policy in standard reaching and perform a few extra reaching trials under normal conditions, but where the CB output is perturbed, by either changing the sign of specific entries in the dy/da Jacobian, to reproduce specific dystonic symptoms such as under-, over-, later- shooting OR apply a random change of sign to get a mixtude of all dystonic symptoms.
 """
 
 
@@ -28,17 +28,14 @@ beta = args.beta
 seeds = [8612, 1209, 5287, 3209, 2861]
     
 save_file = False
-n_baseline_trials = 300 # n. of baseline trials
-n_perturbed_trials = 70 #70 # Considering catch trials
-n_washout_trials = 30
-n_trials = n_baseline_trials + n_perturbed_trials + n_washout_trials
+n_trials = 50
 t_print = 1
 action_s = 2 # two angles in 2D kinematic arm model
 state_s = 2 # 2D space x,y-coord
 
 # Set noise variables
-sensory_noise = 0.005
-fixd_a_noise = 0#.00001#.025 #0.025#0.001 #.0002 # set to experimental data value
+sensory_noise = 0.001
+fixd_a_noise = 0#.025 #0.025#0.001 #.0002 # set to experimental data value
 
 # Set update variables
 assert beta >= 0 and beta <= 1, "beta must be between 0 and 1 (inclusive)"
@@ -53,9 +50,10 @@ ebl_weight = [1,1]
 n_steps = 1
 
 # Perturbation variables
-#max_rotation = 20 * 0.01745 # convert to radiants
-max_rotation = 0
-rotation_increment = max_rotation
+perturb = False
+if perturb:
+    random_perturb = False
+    perturb_component = 3 # specifically perturb one of the four dy/da components (indx: 0-3)
 
 
 # Initialise env
@@ -76,12 +74,6 @@ n_target_lines = len(target_angles)
 
 x_targ = torch.tensor(target_distance * np.cos(target_angles) + x_0 , dtype=torch.float32).unsqueeze(-1)
 y_targ = torch.tensor(target_distance * np.sin(target_angles) + y_0 , dtype=torch.float32).unsqueeze(-1)
-
-## ===== Check by plotting ======
-#plt.scatter(x_targ, y_targ)
-#plt.scatter(x_0, y_0, color='r')
-#plt.show()
-## =======================
 
 
 mean_rwd = torch.zeros(n_target_lines,1)
@@ -159,18 +151,6 @@ for s in seeds:
         # Perform action in the env
         true_x_coord,true_y_coord = model.step(action)
 
-        ## ======= Add rotation perturbation =======
-        # need to re-compute (x,y) based on the roation size
-        angle = torch.atan2(true_y_coord, true_x_coord) 
-        radius = torch.sqrt(true_x_coord**2 + true_y_coord**2)
-
-        ## ------- If perturbed trials, rotate the angle
-        if t > n_baseline_trials and t < (n_baseline_trials + n_perturbed_trials):
-            angle += rotation_increment
-        true_x_coord = radius * torch.cos(angle)
-        true_y_coord = radius * torch.sin(angle)
-        # ---------------------------------------
-
         # Add noise to sensory obs
         x_coord = true_x_coord.detach() + torch.randn_like(true_x_coord) * sensory_noise 
         y_coord = true_y_coord.detach() + torch.randn_like(true_y_coord) * sensory_noise 
@@ -191,7 +171,6 @@ for s in seeds:
         # Compute differentiable rwd signal
         coord = torch.cat([x_coord,y_coord], dim=1) 
         coord.requires_grad_(True)
-        #coord = torch.cat([x_coord,y_coord], dim=1)
 
         rwd = (x_targ - coord[:,0:1])**2 + (y_targ - coord[:,1:2])**2 # it is actually a punishment
         true_rwd = (x_targ - true_x_coord)**2 + (y_targ - true_y_coord)**2 # it is actually a punishment
@@ -200,9 +179,7 @@ for s in seeds:
         
         ## ====== Use running average to compute RPE =======
         delta_rwd = rwd - mean_rwd 
-        #delta_rwd = true_rwd - mean_rwd 
         mean_rwd += c_ln_rate * delta_rwd.detach()
-        #delta_rwd += torch.randn_like(delta_rwd)
         ## ==============================================
 
         # Update the model
@@ -228,14 +205,15 @@ for s in seeds:
         est_dy_da = cerebellum(action.detach(),est_coord.detach()) # predict dy/da
         grad_loss = cerebellum.update(dy_da.view(n_target_lines,-1), est_dy_da)
 
-        ## Add noise to CB e.g., burst activity
-        #est_dy_da += torch.randn_like(est_dy_da) * 10000000
-
-        ## Add a fixed bias to CB
-        bias = torch.zeros_like(est_dy_da) 
-        bias[:, 0:2] = +1
-        bias[:, 2:4] = -1
-        est_dy_da += bias
+        ## ================ Perturb the CB dy/da estimates =============
+        if perturb:
+            ## Change sign of random CB components
+            if random_perturb:
+                est_dy_da *= torch.randn(1,action_s*state_s) # Note: if dy/da > 0 and rand < 0 then sign change, if dy/da < 0 and rand < 0, sign change, else stay the same
+            else:
+                ## Change sign a specific CB component
+                est_dy_da[:,perturb_component] *=-1
+        ## ============================================================
 
         # Combine cerebellum and cortex gradients
         dr_dy_da = (dr_dy @ est_dy_da.view(dy_da.size()))
@@ -251,12 +229,6 @@ for s in seeds:
         # NOTE: I have checked that this gives the correct gradient
         E_grad = torch.cat([dr_dy_dmu, dr_dy_dstd],dim=-1).squeeze().detach()
         
-        # Use the estimated gradient for training Actor
-        E_grad += torch.randn_like(E_grad) * 0 #0.1
-
-        # Add noise to R_grad
-        R_grad += torch.randn_like(R_grad) * 0 #0.5
-
         R_grad_norm = torch.norm(R_grad, dim=-1, keepdim=True)
         E_grad_norm = torch.norm(E_grad, dim=-1, keepdim=True)
 
@@ -325,7 +297,7 @@ coord_outcome = np.concatenate([seed_x_outcome, seed_y_outcome],axis=-1)
 ## ===== Plot traject & Target in xy-coord ====
 mean_x_outcome = seed_x_outcome.mean(axis=0)
 mean_y_outcome = seed_y_outcome.mean(axis=0)
-sampled_trials = np.arange(0,10) * 10
+sampled_trials = [-1,-2,-3,-4,-5]#np.arange(0,10) * 10
 indx_target_plotted = [0,1,2]
 x_traj = mean_x_outcome[sampled_trials]#, indx_target_plotted]
 y_traj = mean_y_outcome[sampled_trials]#, indx_target_plotted]
@@ -337,7 +309,6 @@ plt.xlim([-0.1,0.1])
 plt.show()
 exit()
 ## =======================
-
 
 
 ## Store the directed sensory errors and actions, so that can check whether the change in action correlates with the directed sensory errors
@@ -356,63 +327,26 @@ print('Beta: ',beta)
 print('Mean angle acc: ', mean_angle_acc) 
 print('Mean tot acc: ', mean_acc) 
 
-## ========== Visualization variables ============
-#trials = np.arange(0,n_trials)
-#plt.scatter(trials, mean_angle_acc)
-#plt.show()
-#exit()
-## ==============================================
-
-## ===== Plot diagnostic data ======
-font_s =7
-mpl.rc('font', size=font_s)
-plt.rcParams["font.family"] = "helvetica"
-mpl.rcParams['xtick.labelsize'] = font_s 
-mpl.rcParams['ytick.labelsize'] = font_s 
-
-fig, axs = plt.subplots(nrows=1, ncols=3, figsize=(7.5,3),
- gridspec_kw={'wspace': 0.35, 'hspace': 0.4, 'left': 0.07, 'right': 0.98, 'bottom': 0.15,
-                                               'top': 0.9})
-starting_ep = 0
-tot_accuracy = tot_accuracy[starting_ep:]
-t = torch.arange(len(tot_accuracy))
-axs[0].plot(t,tot_accuracy)
-axs[0].spines['right'].set_visible(False)
-axs[0].spines['top'].set_visible(False)
-axs[0].set_title("Accuracy",fontsize=font_s)
-axs[0].set_xticklabels([])
-
-tot_grad_model_loss = tot_grad_model_loss[starting_ep:]
-t = torch.arange(len(tot_grad_model_loss))
-axs[1].plot(t,tot_grad_model_loss)
-axs[1].spines['right'].set_visible(False)
-axs[1].spines['top'].set_visible(False)
-axs[1].set_title("l2 loss for gradient model",fontsize=font_s)
-axs[1].set_ylim([0.006,0.01])
-axs[1].set_xticklabels([])
-
-tot_target_ebl_grads = tot_target_ebl_grads[starting_ep:]
-t = torch.arange(len(tot_target_ebl_grads))
-axs[2].plot(t,tot_target_ebl_grads)
-axs[2].spines['right'].set_visible(False)
-axs[2].spines['top'].set_visible(False)
-axs[2].set_title("Target gradient magnitude",fontsize=font_s)
-axs[2].set_ylim([0.0001,0.01])
-axs[2].set_xticklabels([])
-#plt.show()
-
 ## ===== Save results =========
 # Create directory to store results
 file_dir = os.path.dirname(os.path.abspath(__file__))
-file_dir = os.path.join(file_dir,'results')
+file_dir = os.path.join(file_dir,'results','perturbations')
 
 # Store model
-if beta ==0:
-    data = 'perturbed_RBL'
-elif beta ==1:    
-    data = 'perturbed_EBL'
+if perturb:
+    if random_perturb:
+        label = '_random'
+    else:
+        label = '_'+str(computeAction)+'st_component'
 else:
-    data = 'perturbed_Mixed_'+str(beta)
+    label = '_NoPerturb'
+
+if beta ==0:
+    data = 'RBL'+label
+elif beta ==1:    
+    data = 'EBL'+label
+else:
+    data = 'Mixed_'+str(beta)+label
 
 model_dir = os.path.join(file_dir,data+'_results.pt')
 
