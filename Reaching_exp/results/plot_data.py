@@ -71,8 +71,8 @@ conditions = ['CB-driven', 'CB-ablation']
 # gridspec_kw={'wspace': 0.65, 'hspace': 0.4, 'left': 0.1, 'right': 0.95, 'bottom': 0.1,
 #                                               'top': 0.95})
 
-fig = plt.figure(figsize=(7, 6))
-gs = fig.add_gridspec(nrows=3, ncols=4, wspace=0.5, hspace=0.7, left=0.1, right=0.95, bottom=0.1, top=0.95)#, height_ratios=[2,2,1,2])
+fig = plt.figure(figsize=(7, 4))
+gs = fig.add_gridspec(nrows=2, ncols=4, wspace=0.4, hspace=0.4, left=0.1, right=0.95, bottom=0.1, top=0.95)#, height_ratios=[2,2,1,2])
 
 
 colors = ['tab:blue','tab:red','tab:green']
@@ -192,7 +192,7 @@ ax_10.spines['top'].set_visible(False)
 ax_10.set_ylabel('Residual error [deg]')
 ax_10.xaxis.set_ticks_position('none') 
 ax_10.yaxis.set_ticks_position('none') 
-ax_10.legend(loc='upper left', bbox_to_anchor=(0.25, 1.3), frameon=False,fontsize=font_s, ncol=3)
+ax_10.legend(loc='upper left', bbox_to_anchor=(0.25, 1.19), frameon=False,fontsize=font_s, ncol=3)
 ## ---------------------------------------------------------------------
 
 ## =========================== Plot after-effects ========================
@@ -319,40 +319,36 @@ ax_13.yaxis.set_ticks_position('none')
 
 
 ## ================================= PLOT RESULTS FROM dy/da PERTURBATIONS ======================================
-
-data_dir = os.path.join(data_dir,'perturbations')
-
-
-#Load xy coord of reaching 
-mean_xy_outcomeS = []
-file_dir = os.path.join(data_dir,'EBL_NoPerturb_results.pt') # Load non perturbed 'healthy' data
-healty_data = torch.load(file_dir)
-mean_xy_outcomeS.append(healty_data['Outcomes'].mean(axis=0))
-targets = healty_data['Targets']
-x_targ = targets[0,:]
-y_targ = targets[1,:]
-# Load data for different dy/da component perturbatios
-label = 'EBL_'
-perturbed_components = [0,1,3]
-for p in perturbed_components:
-    l = label +str(p)+'st_component_results.pt'
-    file_dir = os.path.join(data_dir,l)
-    data = torch.load(file_dir)
-    perturbed_xy_outcomes = data['Outcomes']
-    mean_xy_outcomeS.append(perturbed_xy_outcomes.mean(axis=0))
-i=0
-
-for o in mean_xy_outcomeS:
-    ax = fig.add_subplot(gs[2,i])
-    sampled_trials = [-1,-2,-3,-4,-5]#np.arange(0,10) * 10
-    x_traj = o[sampled_trials,...,0]#, indx_target_plotted]
-    y_traj = o[sampled_trials,...,1]#, indx_target_plotted]
-    indx_target_plotted = [0,1,2]
-    ax.scatter(x_traj, y_traj, color='b')
-    ax.scatter(x_targ[indx_target_plotted], y_targ[indx_target_plotted], color='r')
-    ax.set_ylim([0.45,0.65])
-    ax.set_xlim([-0.05,0.08])
-    i+=1
+#data_dir = os.path.join(data_dir,'perturbations')
+##Load xy coord of reaching 
+#mean_xy_outcomeS = []
+#file_dir = os.path.join(data_dir,'EBL_NoPerturb_results.pt') # Load non perturbed 'healthy' data
+#healty_data = torch.load(file_dir)
+#mean_xy_outcomeS.append(healty_data['Outcomes'].mean(axis=0))
+#targets = healty_data['Targets']
+#x_targ = targets[0,:]
+#y_targ = targets[1,:]
+## Load data for different dy/da component perturbatios
+#label = 'EBL_'
+#perturbed_components = [0,1,3]
+#for p in perturbed_components:
+#    l = label +str(p)+'st_component_results.pt'
+#    file_dir = os.path.join(data_dir,l)
+#    data = torch.load(file_dir)
+#    perturbed_xy_outcomes = data['Outcomes']
+#    mean_xy_outcomeS.append(perturbed_xy_outcomes.mean(axis=0))
+#i=0
+#for o in mean_xy_outcomeS:
+#    ax = fig.add_subplot(gs[2,i])
+#    sampled_trials = [-1,-2,-3,-4,-5]#np.arange(0,10) * 10
+#    x_traj = o[sampled_trials,...,0]#, indx_target_plotted]
+#    y_traj = o[sampled_trials,...,1]#, indx_target_plotted]
+#    indx_target_plotted = [0,1,2]
+#    ax.scatter(x_traj, y_traj, color='b')
+#    ax.scatter(x_targ[indx_target_plotted], y_targ[indx_target_plotted], color='r')
+#    ax.set_ylim([0.45,0.65])
+#    ax.set_xlim([-0.05,0.08])
+#    i+=1
 ## ==========================================================
 
 plt.tight_layout()

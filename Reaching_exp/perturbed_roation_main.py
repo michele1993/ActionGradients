@@ -14,7 +14,7 @@ from utils import compute_targetLines
 import matplotlib as mpl
 
 """ 
-Load pre-trained policy in standard reaching and perform a few extra reaching trials under normal conditions, but where the CB output is perturbed, by either changing the sign of specific entries in the dy/da Jacobian, to reproduce specific dystonic symptoms such as under-, over-, later- shooting OR apply a random change of sign to get a mixtude of all dystonic symptoms.
+Load pre-trained policy in standard reaching and perform a few extra reaching trials under normal conditions, but where the CB output is perturbed, by either changing the sign of specific entries in the dy/da Jacobian (i.e., perturb_component), to reproduce specific dystonic symptoms such as under-, over-, later- shooting OR apply a random change of sign to get a mixtude of all dystonic symptoms (i.e., random_perturb).
 """
 
 
@@ -27,7 +27,7 @@ beta = args.beta
 
 seeds = [8612, 1209, 5287, 3209, 2861]
     
-save_file = True
+save_file = False
 n_trials = 50
 t_print = 1
 action_s = 2 # two angles in 2D kinematic arm model
