@@ -27,7 +27,7 @@ beta = args.beta
 
 seeds = [8612, 1209, 5287, 3209, 2861]
     
-save_file = False
+save_file = True
 n_trials = 50
 t_print = 1
 action_s = 2 # two angles in 2D kinematic arm model
@@ -41,7 +41,7 @@ fixd_a_noise = 0#.025 #0.025#0.001 #.0002 # set to experimental data value
 assert beta >= 0 and beta <= 1, "beta must be between 0 and 1 (inclusive)"
 gradModel_lr_decay = 1
 actor_lr_decay = 1
-a_ln_rate = 0.0001#0.000075 # NOTE: When load optimizer param also load ln_rate
+a_ln_rate = 0.0001 #0.000075 # NOTE: When load optimizer param also load ln_rate
 c_ln_rate = 0.1 #0.05
 model_ln_rate = 0.001
 grad_model_ln_rate = 0.001
@@ -50,10 +50,11 @@ ebl_weight = [1,1]
 n_steps = 1
 
 # Perturbation variables
-perturb = False
+perturb = True
 if perturb:
-    random_perturb = False
-    perturb_component = 3 # specifically perturb one of the four dy/da components (indx: 0-3)
+    random_perturb = True
+    if not random_perturb:
+        perturb_component = 3 # specifically perturb one of the four dy/da components (indx: 0-3)
 
 
 # Initialise env
@@ -116,6 +117,7 @@ seed_x_outcome = []
 seed_y_outcome = []
 seed_action = []
 seed_direct_sensory_error = []
+
 for s in seeds:
     torch.manual_seed(s)
     np.random.seed(s)
@@ -210,6 +212,7 @@ for s in seeds:
             ## Change sign of random CB components
             if random_perturb:
                 est_dy_da *= torch.randn(1,action_s*state_s) # Note: if dy/da > 0 and rand < 0 then sign change, if dy/da < 0 and rand < 0, sign change, else stay the same
+                #est_dy_da *= torch.randn_like(est_dy_da) 
             else:
                 ## Change sign a specific CB component
                 est_dy_da[:,perturb_component] *=-1
@@ -279,7 +282,7 @@ for s in seeds:
             #grad_model_loss = []
             ## ===================================
 
-    print("\n Seed: ",s, "Accuracy: ", tot_accuracy[-1], '\n')
+    #print("\n Seed: ",s, "Accuracy: ", tot_accuracy[-1], '\n')
     seed_acc.append(tot_accuracy)
     seed_angle_acc.append(tot_angle_accuracy)
     seed_x_outcome.append(x_outcome)
@@ -305,9 +308,8 @@ plt.scatter(x_traj, y_traj, color='b')
 plt.scatter(x_targ[indx_target_plotted], y_targ[indx_target_plotted], color='r')
 #plt.scatter(origin_x, origin_y, color='g')
 plt.ylim([0.45,0.65])
-plt.xlim([-0.1,0.1])
-plt.show()
-exit()
+plt.xlim([-0.05,0.1])
+#plt.show()
 ## =======================
 
 
@@ -324,8 +326,8 @@ seed_angle_acc = np.array(seed_angle_acc)
 mean_angle_acc = seed_angle_acc.mean(axis=0)/ (2 * np.pi /360)
 
 print('Beta: ',beta)
-print('Mean angle acc: ', mean_angle_acc) 
-print('Mean tot acc: ', mean_acc) 
+print('Mean angle acc: ', mean_angle_acc.mean()) 
+print('Mean tot acc: ', mean_acc.mean()) 
 
 ## ===== Save results =========
 # Create directory to store results
@@ -337,7 +339,7 @@ if perturb:
     if random_perturb:
         label = '_random'
     else:
-        label = '_'+str(computeAction)+'st_component'
+        label = '_'+str(perturb_component)+'st_component'
 else:
     label = '_NoPerturb'
 
@@ -358,8 +360,8 @@ if save_file:
     #with open(os.path.join(file_dir,'commands.txt'), 'w') as f:
     #    f.write(command_line)
     torch.save({
-        'n_baseline_trl': n_baseline_trials,
-        'n_perturb_trl': n_perturbed_trials,
+        #'n_baseline_trl': n_baseline_trials,
+        #'n_perturb_trl': n_perturbed_trials,
         'XY_accuracy': seed_acc,
         'Angle_accyracy': seed_angle_acc,
         'Origin': origin,
@@ -372,5 +374,5 @@ if save_file:
         'Est_model': estimated_model.state_dict(),
         'Model_optim': estimated_model.optimiser.state_dict(),
     }, model_dir)
-    grads = torch.stack([torch.tensor(norm_RBL_tot_grad), torch.tensor(norm_EBL_tot_grad)])
-    np.save(os.path.join(file_dir,data + '_gradients.npy'), grads.numpy())
+    #grads = torch.stack([torch.tensor(norm_RBL_tot_grad), torch.tensor(norm_EBL_tot_grad)])
+    #np.save(os.path.join(file_dir,data + '_gradients.npy'), grads.numpy())

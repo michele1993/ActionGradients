@@ -67,9 +67,13 @@ mpl.rcParams['ytick.labelsize'] = font_s
 conditions = ['CB-driven', 'CB-ablation']
 
 # Subplot
-fig, ax2 = plt.subplots(nrows=2, ncols=4, figsize=(7,4),
- gridspec_kw={'wspace': 0.65, 'hspace': 0.4, 'left': 0.1, 'right': 0.95, 'bottom': 0.1,
-                                               'top': 0.95})
+#fig, ax2 = plt.subplots(nrows=2, ncols=4, figsize=(7,4),
+# gridspec_kw={'wspace': 0.65, 'hspace': 0.4, 'left': 0.1, 'right': 0.95, 'bottom': 0.1,
+#                                               'top': 0.95})
+
+fig = plt.figure(figsize=(7, 6))
+gs = fig.add_gridspec(nrows=3, ncols=4, wspace=0.5, hspace=0.7, left=0.1, right=0.95, bottom=0.1, top=0.95)#, height_ratios=[2,2,1,2])
+
 
 colors = ['tab:blue','tab:red','tab:green']
 
@@ -96,61 +100,65 @@ n_trials = np.arange(0,len(mean_ebl_angle_error))
 # EBL:
 #ax2[1,0].errorbar(n_trials, mean_ebl_angle_error, yerr=std_ebl_angle_error,capsize=1,elinewidth=0.1, fmt="o", ecolor = "black",markersize=0,color=colors[0],alpha=0.5)
 colors_2 = ['cornflowerblue','lightcoral'] 
-ax2[0,0].scatter(n_trials, mean_ebl_angle_error,s=2.5, color=colors_2[0], alpha=0.65)
-ax2[0,0].fill_between(p_trials, 0, 1,color="0.5",transform=ax2[0,0].get_xaxis_transform(),alpha= 0.3)
-ax2[0,0].set_ylim([-30, 30])
-ax2[0,0].set_yticks([-30,-20,-10,0,10,20,30])
-ax2[0,0].set_ylabel('Error [deg]')
-ax2[0,0].spines['right'].set_visible(False)
-ax2[0,0].spines['top'].set_visible(False)
-ax2[0,0].set_xlabel('Trials')
-ax2[0,0].xaxis.set_ticks_position('none') 
-ax2[0,0].yaxis.set_ticks_position('none') 
+ax_00 = fig.add_subplot(gs[0, 0])
+ax_00.scatter(n_trials, mean_ebl_angle_error,s=2.5, color=colors_2[0], alpha=0.65)
+ax_00.fill_between(p_trials, 0, 1,color="0.5",transform=ax_00.get_xaxis_transform(),alpha= 0.3)
+ax_00.set_ylim([-30, 30])
+ax_00.set_yticks([-30,-20,-10,0,10,20,30])
+ax_00.set_ylabel('Error [deg]')
+ax_00.spines['right'].set_visible(False)
+ax_00.spines['top'].set_visible(False)
+ax_00.set_xlabel('Trials')
+ax_00.xaxis.set_ticks_position('none') 
+ax_00.yaxis.set_ticks_position('none') 
 
 # Human control:
 # Load human control data
 file_dir = os.path.join(data_dir,"human_control.csv")
 human_control = genfromtxt(file_dir, delimiter=',')
 
-ax2[0,1].scatter(human_control[:,0], human_control[:,1],s=2.5, color='tab:gray', alpha=0.5)
-ax2[0,1].fill_between(p_trials, 0, 1,color="0.5",transform=ax2[0,1].get_xaxis_transform(),alpha= 0.3)
-ax2[0,1].set_ylim([-30, 30])
-ax2[0,1].set_yticks([-30,-20,-10,0,10,20,30])
+ax_01 = fig.add_subplot(gs[0,1])
+ax_01.scatter(human_control[:,0], human_control[:,1],s=2.5, color='tab:gray', alpha=0.5)
+ax_01.fill_between(p_trials, 0, 1,color="0.5",transform=ax_01.get_xaxis_transform(),alpha= 0.3)
+ax_01.set_ylim([-30, 30])
+ax_01.set_yticks([-30,-20,-10,0,10,20,30])
 #ax2[0,1].set_ylabel('Error [deg]')
-ax2[0,1].spines['right'].set_visible(False)
-ax2[0,1].spines['top'].set_visible(False)
-ax2[0,1].set_xlabel('Trials')
-ax2[0,1].xaxis.set_ticks_position('none') 
-ax2[0,1].yaxis.set_ticks_position('none') 
+ax_01.spines['right'].set_visible(False)
+ax_01.spines['top'].set_visible(False)
+ax_01.set_xlabel('Trials')
+ax_01.xaxis.set_ticks_position('none') 
+ax_01.yaxis.set_ticks_position('none') 
 
 
 # RBL:
-ax2[0,2].scatter(n_trials, mean_rbl_angle_error,s=2.5, color=colors_2[1], alpha=0.75)
-ax2[0,2].fill_between(p_trials, 0, 1,color="0.5",transform=ax2[0,2].get_xaxis_transform(),alpha= 0.3)
-ax2[0,2].set_ylim([-30, 30])
-ax2[0,2].set_yticks([-30,-20,-10,0,10,20,30])
+ax_02 = fig.add_subplot(gs[0,2])
+ax_02.scatter(n_trials, mean_rbl_angle_error,s=2.5, color=colors_2[1], alpha=0.75)
+ax_02.fill_between(p_trials, 0, 1,color="0.5",transform=ax_02.get_xaxis_transform(),alpha= 0.3)
+ax_02.set_ylim([-30, 30])
+ax_02.set_yticks([-30,-20,-10,0,10,20,30])
 #ax2[0,2].set_yticks([2,3,4])
-ax2[0,2].spines['right'].set_visible(False)
-ax2[0,2].spines['top'].set_visible(False)
-ax2[0,2].set_xlabel('Trials')
-ax2[0,2].xaxis.set_ticks_position('none') 
-ax2[0,2].yaxis.set_ticks_position('none') 
+ax_02.spines['right'].set_visible(False)
+ax_02.spines['top'].set_visible(False)
+ax_02.set_xlabel('Trials')
+ax_02.xaxis.set_ticks_position('none') 
+ax_02.yaxis.set_ticks_position('none') 
 
 # Load human CB(cerebellar) data
 file_dir = os.path.join(data_dir,"human_CB.csv")
 human_control = genfromtxt(file_dir, delimiter=',')
 
 CB_p_trials = [n_baseline_trl, n_baseline_trl+n_perturb_trl-10] # CB had fewer trials in Tseng et al., 2007
-ax2[0,3].scatter(human_control[:,0], human_control[:,1],s=2.5, color='tab:gray', alpha=0.5)
-ax2[0,3].fill_between(CB_p_trials, 0, 1,color="0.5",transform=ax2[0,3].get_xaxis_transform(),alpha= 0.3)
-ax2[0,3].set_ylim([-30, 30])
-ax2[0,3].set_yticks([-30,-20,-10,0,10,20,30])
+ax_03 = fig.add_subplot(gs[0,3])
+ax_03.scatter(human_control[:,0], human_control[:,1],s=2.5, color='tab:gray', alpha=0.5)
+ax_03.fill_between(CB_p_trials, 0, 1,color="0.5",transform=ax_03.get_xaxis_transform(),alpha= 0.3)
+ax_03.set_ylim([-30, 30])
+ax_03.set_yticks([-30,-20,-10,0,10,20,30])
 #ax2[0,3].set_ylabel('Error [deg]')
-ax2[0,3].spines['right'].set_visible(False)
-ax2[0,3].spines['top'].set_visible(False)
-ax2[0,3].set_xlabel('Trials')
-ax2[0,3].xaxis.set_ticks_position('none') 
-ax2[0,3].yaxis.set_ticks_position('none') 
+ax_03.spines['right'].set_visible(False)
+ax_03.spines['top'].set_visible(False)
+ax_03.set_xlabel('Trials')
+ax_03.xaxis.set_ticks_position('none') 
+ax_03.yaxis.set_ticks_position('none') 
 
 ## ============ Plot residual error in degrees ====================
 # Human data:
@@ -169,21 +177,22 @@ angle_err_std = [std_ebl_angle_error[final_pert_trial], std_rbl_angle_error[fina
 
 x = np.array([0,1])
 width=0.4
+ax_10 = fig.add_subplot(gs[1,0])
 for i in range(2):
-    ax2[1,0].bar(x[i], angle_err_mean[i], width=width, align='center', alpha=0.5,ecolor='black', capsize=5, edgecolor='k', color=colors[i], label=conditions[i]) #color='tab:gray',
-ax2[1,0].bar(x+width,human_angle_error, width=width, align='center', alpha=0.5,ecolor='black', capsize=5, edgecolor='k', color='tab:gray', label='human data')
-ax2[1,0].errorbar(conditions[:2], angle_err_mean, yerr=angle_err_std, ls='none', color='black',  elinewidth=0.75, capsize=1.5) # ecolor='lightslategray',
-ax2[1,0].errorbar(x+ width, human_angle_error, yerr=human_err_std, ls='none', color='black',  elinewidth=0.75, capsize=1.5) # ecolor='lightslategray',
-ax2[1,0].set_xticks(x + width/2)
-ax2[1,0].set_xticklabels(conditions[:2])
-ax2[1,0].set_ylim([0, 20])
-ax2[1,0].set_yticks([0,5,10,15])
-ax2[1,0].spines['right'].set_visible(False)
-ax2[1,0].spines['top'].set_visible(False)
-ax2[1,0].set_ylabel('Residual error [deg]')
-ax2[1,0].xaxis.set_ticks_position('none') 
-ax2[1,0].yaxis.set_ticks_position('none') 
-ax2[1,0].legend(loc='upper left', bbox_to_anchor=(0.25, 1.2), frameon=False,fontsize=font_s, ncol=3)
+    ax_10.bar(x[i], angle_err_mean[i], width=width, align='center', alpha=0.5,ecolor='black', capsize=5, edgecolor='k', color=colors[i], label=conditions[i]) #color='tab:gray',
+ax_10.bar(x+width,human_angle_error, width=width, align='center', alpha=0.5,ecolor='black', capsize=5, edgecolor='k', color='tab:gray', label='human data')
+ax_10.errorbar(conditions[:2], angle_err_mean, yerr=angle_err_std, ls='none', color='black',  elinewidth=0.75, capsize=1.5) # ecolor='lightslategray',
+ax_10.errorbar(x+ width, human_angle_error, yerr=human_err_std, ls='none', color='black',  elinewidth=0.75, capsize=1.5) # ecolor='lightslategray',
+ax_10.set_xticks(x + width/2)
+ax_10.set_xticklabels(conditions[:2])
+ax_10.set_ylim([0, 20])
+ax_10.set_yticks([0,5,10,15])
+ax_10.spines['right'].set_visible(False)
+ax_10.spines['top'].set_visible(False)
+ax_10.set_ylabel('Residual error [deg]')
+ax_10.xaxis.set_ticks_position('none') 
+ax_10.yaxis.set_ticks_position('none') 
+ax_10.legend(loc='upper left', bbox_to_anchor=(0.25, 1.3), frameon=False,fontsize=font_s, ncol=3)
 ## ---------------------------------------------------------------------
 
 ## =========================== Plot after-effects ========================
@@ -204,20 +213,22 @@ angle_after_std = [std_ebl_angle_error[start_washout_trial], std_rbl_angle_error
 
 x = np.array([0,1])
 width=0.4
+
+ax_11 = fig.add_subplot(gs[1,1])
 for i in range(2):
-    ax2[1,1].bar(x[i], angle_after_mean[i], width=width, align='center', alpha=0.5, ecolor='black', capsize=5, edgecolor='k', color=colors[i], label=conditions[i]) #color='tab:gray',
-ax2[1,1].bar(x+width,human_after_error, width=width, align='center', alpha=0.5,ecolor='black', capsize=5, edgecolor='k', color='tab:gray', label='human data')
-ax2[1,1].errorbar(conditions[:2], angle_after_mean, yerr=angle_after_std, ls='none', color='black',  elinewidth=0.75, capsize=1.5) # ecolor='lightslategray',
-ax2[1,1].errorbar(x+width, human_after_error, yerr=human_after_sde, ls='none', color='black',  elinewidth=0.75, capsize=1.5) # ecolor='lightslategray',
-ax2[1,1].set_xticks(x + width)
-ax2[1,1].set_xticklabels(conditions[:2])
-ax2[1,1].set_ylim([-20, 0])
-ax2[1,1].set_yticks([0,-5,-10,-15])
-ax2[1,1].spines['right'].set_visible(False)
-ax2[1,1].spines['bottom'].set_visible(False)
+    ax_11.bar(x[i], angle_after_mean[i], width=width, align='center', alpha=0.5, ecolor='black', capsize=5, edgecolor='k', color=colors[i], label=conditions[i]) #color='tab:gray',
+ax_11.bar(x+width,human_after_error, width=width, align='center', alpha=0.5,ecolor='black', capsize=5, edgecolor='k', color='tab:gray', label='human data')
+ax_11.errorbar(conditions[:2], angle_after_mean, yerr=angle_after_std, ls='none', color='black',  elinewidth=0.75, capsize=1.5) # ecolor='lightslategray',
+ax_11.errorbar(x+width, human_after_error, yerr=human_after_sde, ls='none', color='black',  elinewidth=0.75, capsize=1.5) # ecolor='lightslategray',
+ax_11.set_xticks(x + width)
+ax_11.set_xticklabels(conditions[:2])
+ax_11.set_ylim([-20, 0])
+ax_11.set_yticks([0,-5,-10,-15])
+ax_11.spines['right'].set_visible(False)
+ax_11.spines['bottom'].set_visible(False)
 #ax2[1,1].set_ylabel('Residual error [deg]')
-ax2[1,1].xaxis.set_ticks_position('none') 
-ax2[1,1].yaxis.set_ticks_position('none') 
+ax_11.xaxis.set_ticks_position('none') 
+ax_11.yaxis.set_ticks_position('none') 
 #ax2[1,1].tick_params(axis='x', bottom=False, top=True, labelbottom=False, labeltop=True)
 #ax2[1,1].spines['top'].set_position(('outward', 10))
 #ax2[1,1].xaxis.tick_top()
@@ -239,15 +250,16 @@ final_adpt_acc_std = [std_rbl_angle_error[final_pert_trial]/sde_nom, std_angle_a
 
 conditions = [0,25,50,75,100]
 condition_labels = ['0%', '25%','50%','75%', '100%']
-ax2[1,2].errorbar(conditions, final_adpt_acc_mean, yerr=final_adpt_acc_std, capsize=3, fmt="r--o", ecolor = "black",markersize=4,color='tab:orange',alpha=0.5)
-ax2[1,2].spines['right'].set_visible(False)
-ax2[1,2].spines['top'].set_visible(False)
-ax2[1,2].set_ylabel('Residual error [deg]')
-ax2[1,2].set_xlabel('CB contribution')
-ax2[1,2].set_xticks([0,25,50,75,100])
-ax2[1,2].set_xticklabels(condition_labels)
-ax2[1,2].xaxis.set_ticks_position('none') 
-ax2[1,2].yaxis.set_ticks_position('none') 
+ax_12 = fig.add_subplot(gs[1,2])
+ax_12.errorbar(conditions, final_adpt_acc_mean, yerr=final_adpt_acc_std, capsize=3, fmt="r--o", ecolor = "black",markersize=4,color='tab:orange',alpha=0.5)
+ax_12.spines['right'].set_visible(False)
+ax_12.spines['top'].set_visible(False)
+ax_12.set_ylabel('Residual error [deg]')
+ax_12.set_xlabel('CB contribution')
+ax_12.set_xticks([0,25,50,75,100])
+ax_12.set_xticklabels(condition_labels)
+ax_12.xaxis.set_ticks_position('none') 
+ax_12.yaxis.set_ticks_position('none') 
 
 ## ==================== Plot relation directed errors & change in reaching tarjectories ====================
 ## Basically: I compute how much each reach endpoint is changing in xy-coord from one trial to the next
@@ -293,15 +305,55 @@ Mixed_sim_sde_75 = torch.std(Mixed_angle_similaritieS[2])/ sde_norm
 sde_sim = [RBL_sim_sde, Mixed_sim_sde_25, Mixed_sim_sde_50, Mixed_sim_sde_75, EBL_sim_sde] 
 conditions = [0,25,50,75,100]
 condition_labels = ['0%', '25%','50%','75%', '100%']
-ax2[1,3].errorbar(conditions, mean_sim, yerr=sde_sim, capsize=3, fmt="r--o", ecolor = "black",markersize=4,color='tab:orange',alpha=0.5)
-ax2[1,3].spines['right'].set_visible(False)
-ax2[1,3].spines['top'].set_visible(False)
-ax2[1,3].set_ylabel('Cosyne similarity')
-ax2[1,3].set_xlabel('CB contribution')
-ax2[1,3].set_xticks([0,25,50,75,100])
-ax2[1,3].set_xticklabels(condition_labels)
-ax2[1,3].xaxis.set_ticks_position('none') 
-ax2[1,3].yaxis.set_ticks_position('none') 
+ax_13 = fig.add_subplot(gs[1,3])
+ax_13.errorbar(conditions, mean_sim, yerr=sde_sim, capsize=3, fmt="r--o", ecolor = "black",markersize=4,color='tab:orange',alpha=0.5)
+ax_13.spines['right'].set_visible(False)
+ax_13.spines['top'].set_visible(False)
+ax_13.set_ylabel('Cosyne similarity')
+ax_13.set_xlabel('CB contribution')
+ax_13.set_xticks([0,25,50,75,100])
+ax_13.set_xticklabels(condition_labels)
+ax_13.xaxis.set_ticks_position('none') 
+ax_13.yaxis.set_ticks_position('none') 
 
+
+
+## ================================= PLOT RESULTS FROM dy/da PERTURBATIONS ======================================
+
+data_dir = os.path.join(data_dir,'perturbations')
+
+
+#Load xy coord of reaching 
+mean_xy_outcomeS = []
+file_dir = os.path.join(data_dir,'EBL_NoPerturb_results.pt') # Load non perturbed 'healthy' data
+healty_data = torch.load(file_dir)
+mean_xy_outcomeS.append(healty_data['Outcomes'].mean(axis=0))
+targets = healty_data['Targets']
+x_targ = targets[0,:]
+y_targ = targets[1,:]
+# Load data for different dy/da component perturbatios
+label = 'EBL_'
+perturbed_components = [0,1,3]
+for p in perturbed_components:
+    l = label +str(p)+'st_component_results.pt'
+    file_dir = os.path.join(data_dir,l)
+    data = torch.load(file_dir)
+    perturbed_xy_outcomes = data['Outcomes']
+    mean_xy_outcomeS.append(perturbed_xy_outcomes.mean(axis=0))
+i=0
+
+for o in mean_xy_outcomeS:
+    ax = fig.add_subplot(gs[2,i])
+    sampled_trials = [-1,-2,-3,-4,-5]#np.arange(0,10) * 10
+    x_traj = o[sampled_trials,...,0]#, indx_target_plotted]
+    y_traj = o[sampled_trials,...,1]#, indx_target_plotted]
+    indx_target_plotted = [0,1,2]
+    ax.scatter(x_traj, y_traj, color='b')
+    ax.scatter(x_targ[indx_target_plotted], y_targ[indx_target_plotted], color='r')
+    ax.set_ylim([0.45,0.65])
+    ax.set_xlim([-0.05,0.08])
+    i+=1
 ## ==========================================================
+
+plt.tight_layout()
 plt.show()
