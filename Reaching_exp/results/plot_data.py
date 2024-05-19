@@ -72,7 +72,7 @@ conditions = ['CB-driven', 'CB-ablation']
 #                                               'top': 0.95})
 
 fig = plt.figure(figsize=(7, 4))
-gs = fig.add_gridspec(nrows=2, ncols=4, wspace=0.4, hspace=0.4, left=0.1, right=0.95, bottom=0.1, top=0.95)#, height_ratios=[2,2,1,2])
+gs = fig.add_gridspec(nrows=2, ncols=4, wspace=0.4, hspace=0.5, left=0.1, right=0.95, bottom=0.1, top=0.95)#, height_ratios=[2,2,1,2])
 
 
 colors = ['tab:blue','tab:red','tab:green']
@@ -149,7 +149,7 @@ human_control = genfromtxt(file_dir, delimiter=',')
 
 CB_p_trials = [n_baseline_trl, n_baseline_trl+n_perturb_trl-10] # CB had fewer trials in Tseng et al., 2007
 ax_03 = fig.add_subplot(gs[0,3])
-ax_03.scatter(human_control[:,0], human_control[:,1],s=2.5, color='tab:gray', alpha=0.5)
+ax_03.scatter(human_control[:,0], human_control[:,1],s=2.5, color='k', alpha=0.5)
 ax_03.fill_between(CB_p_trials, 0, 1,color="0.5",transform=ax_03.get_xaxis_transform(),alpha= 0.3)
 ax_03.set_ylim([-30, 30])
 ax_03.set_yticks([-30,-20,-10,0,10,20,30])
@@ -178,9 +178,11 @@ angle_err_std = [std_ebl_angle_error[final_pert_trial], std_rbl_angle_error[fina
 x = np.array([0,1])
 width=0.4
 ax_10 = fig.add_subplot(gs[1,0])
-for i in range(2):
-    ax_10.bar(x[i], angle_err_mean[i], width=width, align='center', alpha=0.5,ecolor='black', capsize=5, edgecolor='k', color=colors[i], label=conditions[i]) #color='tab:gray',
-ax_10.bar(x+width,human_angle_error, width=width, align='center', alpha=0.5,ecolor='black', capsize=5, edgecolor='k', color='tab:gray', label='human data')
+#for i in range(2):
+ax_10.bar(x[0], angle_err_mean[0], width=width, align='center', alpha=0.5,ecolor='black', capsize=5, edgecolor='k', color=colors[0], label=conditions[0]) #color='tab:gray',
+ax_10.bar(x[0]+width,human_angle_error[0], width=width, align='center', alpha=0.5,ecolor='black', capsize=5, edgecolor='k', color='tab:gray', label='human control')
+ax_10.bar(x[1], angle_err_mean[1], width=width, align='center', alpha=0.5,ecolor='black', capsize=5, edgecolor='k', color=colors[1], label=conditions[1]) #color='tab:gray',
+ax_10.bar(x[1]+width,human_angle_error[1], width=width, align='center', alpha=0.5,ecolor='black', capsize=5, edgecolor='k', color='k', label='CB patients')
 ax_10.errorbar(conditions[:2], angle_err_mean, yerr=angle_err_std, ls='none', color='black',  elinewidth=0.75, capsize=1.5) # ecolor='lightslategray',
 ax_10.errorbar(x+ width, human_angle_error, yerr=human_err_std, ls='none', color='black',  elinewidth=0.75, capsize=1.5) # ecolor='lightslategray',
 ax_10.set_xticks(x + width/2)
@@ -192,7 +194,7 @@ ax_10.spines['top'].set_visible(False)
 ax_10.set_ylabel('Residual error [deg]')
 ax_10.xaxis.set_ticks_position('none') 
 ax_10.yaxis.set_ticks_position('none') 
-ax_10.legend(loc='upper left', bbox_to_anchor=(0.25, 1.19), frameon=False,fontsize=font_s, ncol=3)
+ax_10.legend(loc='upper left', bbox_to_anchor=(0, 1.25), frameon=False,fontsize=font_s, ncol=4)
 ## ---------------------------------------------------------------------
 
 ## =========================== Plot after-effects ========================
@@ -217,7 +219,7 @@ width=0.4
 ax_11 = fig.add_subplot(gs[1,1])
 for i in range(2):
     ax_11.bar(x[i], angle_after_mean[i], width=width, align='center', alpha=0.5, ecolor='black', capsize=5, edgecolor='k', color=colors[i], label=conditions[i]) #color='tab:gray',
-ax_11.bar(x+width,human_after_error, width=width, align='center', alpha=0.5,ecolor='black', capsize=5, edgecolor='k', color='tab:gray', label='human data')
+ax_11.bar(x+width,human_after_error, width=width, align='center', alpha=0.5,ecolor='black', capsize=5, edgecolor='k', color=['tab:gray','k'], label=['healthy control', 'CB patients'])
 ax_11.errorbar(conditions[:2], angle_after_mean, yerr=angle_after_std, ls='none', color='black',  elinewidth=0.75, capsize=1.5) # ecolor='lightslategray',
 ax_11.errorbar(x+width, human_after_error, yerr=human_after_sde, ls='none', color='black',  elinewidth=0.75, capsize=1.5) # ecolor='lightslategray',
 ax_11.set_xticks(x + width)
@@ -353,3 +355,4 @@ ax_13.yaxis.set_ticks_position('none')
 
 plt.tight_layout()
 plt.show()
+#plt.savefig('/Users/px19783/Desktop/Rotation_results', format='png', dpi=1400)

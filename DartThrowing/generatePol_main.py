@@ -8,7 +8,7 @@ from CombinedAG import CombActionGradient
 
 torch.manual_seed(0)
 
-""" Generate a basline policy to test the pertubation effects on different signal types as in Izawa and Shadmer, 2011"""
+""" Generate a basline policy to test the reversed pertubation effects across BG patients and control, based on Gutierrez-Garralda et al., 2013 paper """
 ## NOTE: The baseline policy is assumed to be trained with a mixed signal (beta=0.5) to avoid favouring any of the two approaches, while starting the perturbation with the same settings.
 
 trials = 5000
@@ -25,13 +25,13 @@ a_ln_rate = 0.005
 c_ln_rate = 0.1
 model_ln_rate = 0.01
 beta = 0.5 ## DON'T CHANGE, Read NOTE above.
-rbl_weight = [0.01, 0.01]
-ebl_weight = [5, 100]
+rbl_weight = [1,1]
+ebl_weight = [1,1]
 
 ## Peturbation:
 
-target = 0.1056 # target angle : 6 degrees - Izawa and Shadmer, 2011
-y_star = torch.tensor([target],dtype=torch.float32)
+targets = [-0.1056, 0.1056] # Provide at least two targets to fit linear model
+targets = torch.tensor(targets,dtype=torch.float32)
 
 model = Mot_model()
 
@@ -44,6 +44,10 @@ tot_accuracy = []
 mean_rwd = 0
 trial_acc = []
 for ep in range(1,trials+1):
+
+    # randomly select target across trials
+    indx = np.random.randint(0,2) 
+    y_star = targets[indx:indx+1]
 
     # Sample action from Gaussian policy
     action, mu_a, std_a = actor.computeAction(y_star, fixd_a_noise)

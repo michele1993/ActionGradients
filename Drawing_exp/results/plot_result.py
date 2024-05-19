@@ -32,9 +32,9 @@ plt.rcParams["font.family"] = "helvetica"
 mpl.rcParams['xtick.labelsize'] = font_s 
 mpl.rcParams['ytick.labelsize'] = font_s 
 
-fig, axs = plt.subplots(nrows=2, ncols=5, figsize=(8,4),
- gridspec_kw={'wspace': 0.45, 'hspace': 0.7, 'left': 0.07, 'right': 0.98, 'bottom': 0.15,
-                                               'top': 0.9})
+fig, axs = plt.subplots(nrows=2, ncols=5, figsize=(7,4),
+ gridspec_kw={'wspace': 0.5, 'hspace': 0.7, 'left': 0.08, 'right': 0.99, 'bottom': 0.1,
+                                               'top': 0.98})
 ## Plot training accuracy
 train_acc_file = os.path.join(file_dir,str(update)+'_update','Mean_training_betas_acc.npy')
 mean_train_acc = np.load(train_acc_file) # [betas, mean_train_acc]
@@ -49,12 +49,13 @@ for acc in mean_train_acc:
 axs[0,4].spines['right'].set_visible(False)
 axs[0,4].spines['top'].set_visible(False)
 axs[0,4].set_ylabel('Training error')
+axs[0,4].set_xticks([0,5000])
 axs[0,4].set_xlabel('Training episodes')
 axs[0,4].xaxis.set_ticks_position('none') 
 axs[0,4].yaxis.set_ticks_position('none') 
 
 ## Plot Ataxia scores across betas
-conditions = ['0%', '25%','50%','75%', '100%']
+conditions = ['0%', '  25%','  50%','  75%', '  100%']
 colors = ['tab:red','tab:green','tab:green','tab:green','tab:blue']
 
 axs[0,0].bar(conditions,ataxia_mean[0],align='center', alpha=alpha,ecolor='black', capsize=5, color=colors,edgecolor='k')
@@ -62,7 +63,8 @@ axs[0,0].errorbar(conditions,ataxia_mean[0], yerr=ataxia_se[0], ls='none', color
 axs[0,0].spines['right'].set_visible(False)
 axs[0,0].spines['top'].set_visible(False)
 axs[0,0].set_ylabel('Ataxia score')
-axs[0,0].set_xlabel('CC contribution')
+axs[0,0].set_xlabel('CB contribution')
+axs[0,0].set_xticklabels(conditions,rotation=45)#, ha='right')
 #axs[0,0].legend(loc='upper center', bbox_to_anchor=(0.4, 1), frameon=False, fontsize=font_s)#, ncol=5)
 axs[0,0].xaxis.set_ticks_position('none') 
 axs[0,0].yaxis.set_ticks_position('none') 
@@ -83,7 +85,7 @@ for m,s in zip(ataxia_mean, ataxia_se):
     if i ==0:
         axs[0,1].errorbar(updt_conditions[i,0],m[0], yerr=s[0], label='DA only', capsize=3, fmt="r--o",markerfacecolor=colors[0],markeredgecolor=colors[0],c='black',elinewidth=1,alpha=alpha)
         axs[0,1].errorbar(updt_conditions[i,1],m[3], yerr=s[3], label='Mixed', capsize=3, fmt="r--o",markerfacecolor=colors[1],markeredgecolor=colors[1],c='black',elinewidth=1,alpha=alpha)
-        axs[0,1].errorbar(updt_conditions[i,2],m[4], yerr=s[4], label='CC only', capsize=3, fmt="r--o",markerfacecolor=colors[2],markeredgecolor=colors[2],c='black',elinewidth=1,alpha=alpha)
+        axs[0,1].errorbar(updt_conditions[i,2],m[4], yerr=s[4], label='CB only', capsize=3, fmt="r--o",markerfacecolor=colors[2],markeredgecolor=colors[2],c='black',elinewidth=1,alpha=alpha)
     else:
         axs[0,1].errorbar(updt_conditions[i,0],m[0], yerr=s[0], capsize=3, fmt="r--o",markerfacecolor=colors[0],markeredgecolor=colors[0],c='black',elinewidth=1,alpha=alpha)
         axs[0,1].errorbar(updt_conditions[i,1],m[1], yerr=s[1], capsize=3, fmt="r--o",markerfacecolor=colors[1],markeredgecolor=colors[1],c='black',elinewidth=1,alpha=alpha)
@@ -95,7 +97,7 @@ axs[0,1].spines['top'].set_visible(False)
 axs[0,1].set_xlabel('sensory temporal feedback')
 axs[0,1].set_ylabel('Task error')
 #axs[0,2].legend(loc='upper center', bbox_to_anchor=(0.24, 1.05), frameon=False, fontsize=font_s)#, ncol=5)
-axs[0,1].legend(loc='upper left', bbox_to_anchor=(0.5, -0.3), frameon=False,fontsize=font_s, ncol=3)
+axs[0,1].legend(loc='upper left', bbox_to_anchor=(-0.25, -0.4), frameon=False,fontsize=font_s, ncol=3)
 axs[0,1].xaxis.set_ticks_position('none') 
 axs[0,1].yaxis.set_ticks_position('none') 
 
@@ -140,6 +142,8 @@ for d in outcome_data:
     axs[1,i].set_xlabel('x-coord')
     axs[1,i].xaxis.set_ticks_position('none') 
     axs[1,i].yaxis.set_ticks_position('none') 
+    #axs[1,i].set_ylim([0.45, 0.65])
+    #axs[1,i].set_xlim([-0.1, 0.1])
     if i == 0:
         axs[1,i].set_ylabel('y-coord')
     if i > 0:    

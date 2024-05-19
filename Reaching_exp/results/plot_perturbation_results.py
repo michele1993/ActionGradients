@@ -8,7 +8,7 @@ import matplotlib as mpl
 radiant_ratio = 360/(2*np.pi)
 fig = plt.figure(figsize=(7, 2.5))
 #gs = fig.add_gridspec(nrows=2, ncols=3, height_ratios=[1,1])
-gs = fig.add_gridspec(nrows=2, ncols=4, wspace=0.45, hspace=0.3, left=0.01, right=0.95, bottom=0.15, top=0.9, height_ratios=[1,1])
+gs = fig.add_gridspec(nrows=2, ncols=4, wspace=0.5, hspace=0.3, left=0.01, right=0.95, bottom=0.15, top=0.9, height_ratios=[1,1])
 
 font_s = 7
 mpl.rc('font', size=font_s)
@@ -148,15 +148,24 @@ mean_angle_acc = angle_acc.mean(axis=-1)
 std_angle_acc = angle_acc.std(axis=-1)/sde_norm
 
 ax = fig.add_subplot(gs[:,3])
-ax.errorbar(conditions, mean_angle_acc, yerr=std_angle_acc, capsize=3, fmt="r--o", ecolor = "black",markersize=4,color='tab:orange',alpha=0.5)
+conditions = [0,1]
+CB_driven_mean = mean_angle_acc[-1]
+DA_driven_mean = mean_angle_acc[0]
+
+CB_driven_std = std_angle_acc[-1]
+DA_driven_std = std_angle_acc[0]
+
+ax.errorbar(conditions[0], CB_driven_mean, yerr=CB_driven_std, capsize=3, fmt="r--o", ecolor = "black",markersize=4,color='tab:blue',alpha=0.5)
+ax.errorbar(conditions[1], DA_driven_mean, yerr=DA_driven_std, capsize=3, fmt="r--o", ecolor = "black",markersize=4,color='tab:red',alpha=0.5)
 ax.spines['right'].set_visible(False)
 ax.spines['top'].set_visible(False)
 ax.set_ylabel('Error [deg]')
-ax.set_xlabel('lesioned-CB contribution')
-ax.set_xticks([0,25,50,75,100])
-ax.set_xticklabels(condition_labels)
+#ax.set_xlabel('lesioned-CB contribution')
+ax.set_xticks([0,1])
+ax.set_xticklabels(['lesioned-CB driven', 'DA-driven'])
 ax.xaxis.set_ticks_position('none') 
 ax.yaxis.set_ticks_position('none') 
 
 plt.tight_layout()
-plt.show()
+#plt.show()
+plt.savefig('/Users/px19783/Desktop/CB_perturbation', format='png', dpi=1400)

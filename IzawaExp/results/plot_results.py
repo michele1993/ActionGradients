@@ -102,7 +102,7 @@ width=0.4
 
 ## PLot the bar chart across 3 conditions
 ax2[0,0].bar(x,mean_adapt, width=width, align='center', alpha=0.5,ecolor='black', capsize=5, edgecolor='k', color=colors) #color='tab:gray',
-ax2[0,0].bar(x+width,human_adaptation, width=width, align='center', alpha=0.5,ecolor='black', capsize=5, edgecolor='k', color='tab:gray', label='experimental data') #color='tab:gray',
+ax2[0,0].bar(x+width,human_adaptation, width=width, align='center', alpha=0.5,ecolor='black', capsize=5, edgecolor='k', color='tab:gray', label='human data') #color='tab:gray',
 ax2[0,0].errorbar(x,mean_adapt, yerr=stde_adapt, ls='none', color='black',  elinewidth=0.75, capsize=1.5) # ecolor='lightslategray',
 ax2[0,0].set_xticks(x + width/2)
 ax2[0,0].set_xticklabels(conditions)
