@@ -18,7 +18,7 @@ args = parser.parse_args()
 beta = args.beta
 
 seeds = [8721, 5467, 1092, 9372,2801]
-save_file = True
+save_file = False
 
 # Experimental set-up based on 
 baseline_trials = 26

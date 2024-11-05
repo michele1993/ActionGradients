@@ -5,11 +5,11 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 from numpy import genfromtxt
 
-
+save_file = False
 radiant_ratio = 360/(2*np.pi)
 fig = plt.figure(figsize=(7, 2))
 #gs = fig.add_gridspec(nrows=2, ncols=3, height_ratios=[1,1])
-gs = fig.add_gridspec(nrows=1, ncols=4, wspace=0.6, hspace=0, left=0.075, right=0.95, bottom=0.4, top=0.95)#, height_ratios=[1,0.2,1])
+gs = fig.add_gridspec(nrows=1, ncols=4, wspace=0.6, hspace=0, left=0.075, right=0.95, bottom=0.4, top=0.9)#, height_ratios=[1,0.2,1])
 
 font_s = 7
 mpl.rc('font', size=font_s)
@@ -115,9 +115,10 @@ ax_10.set_yticks([0,5,10,15])
 ax_10.spines['right'].set_visible(False)
 ax_10.spines['top'].set_visible(False)
 ax_10.set_ylabel('Residual error [deg]')
+ax_10.set_title('Rotation task: model vs data', fontsize=font_s)
 ax_10.xaxis.set_ticks_position('none') 
-ax_10.yaxis.set_ticks_position('none') 
-legend_height = -0.3
+#ax_10.yaxis.set_ticks_position('none') 
+legend_height = -0.4
 ax_10.legend(loc='upper left', bbox_to_anchor=(-0.4, legend_height), frameon=False,fontsize=font_s, ncol=4)
 ## ---------------------------------------------------------------------
 
@@ -142,11 +143,12 @@ ax_12.errorbar(conditions, final_adpt_acc_mean, yerr=final_adpt_acc_std, capsize
 ax_12.spines['right'].set_visible(False)
 ax_12.spines['top'].set_visible(False)
 #ax_12.set_ylabel('Residual error [deg]')
-ax_12.set_xlabel('CB contribution')
+ax_12.set_xlabel('Learning contribution \n (CB vs DA)')
+ax_12.set_title('Rotation task: model predictions', fontsize=font_s)
 ax_12.set_xticks([0,25,50,75,100])
 ax_12.set_xticklabels(condition_labels)
 ax_12.xaxis.set_ticks_position('none') 
-ax_12.yaxis.set_ticks_position('none') 
+#ax_12.yaxis.set_ticks_position('none') 
 
 
 ## =============================== PLOT RESULTS FROM REVERSAl TASK ======================
@@ -263,6 +265,11 @@ optBeta_adpt_mean = optBeta_adpt.mean()
 RBL_adpt_sde = RBL_adpt.std() / np.sqrt(5)
 optBeta_adpt_sde = optBeta_adpt.std() / np.sqrt(5)
 
+model_adpt_means = [RBL_adpt_mean, optBeta_adpt_mean]
+human_adpt_means = [control_adpt, BG_patient_adpt]
+
+model_adpt_sde = [RBL_adpt_sde, optBeta_adpt_sde]
+human_adpt_sde = [control_adapt_sde, BG_patient_adapt_sde]
 
 #conditions = ['Control \n (DA driven)', 'BG patients \n (DA-deficiency)']
 conditions = ['Control', 'BG patients']
@@ -272,27 +279,28 @@ x = np.array([0,1])
 width=0.3
 ax_10 = fig.add_subplot(gs[0,2])
 #for i in range(2):
-ax_10.bar(x[0], RBL_adpt_mean, width=width, align='center', alpha=0.5,ecolor='black', capsize=5, edgecolor='k', color=colors[1]) #color='tab:gray',
-ax_10.bar(x[0]+width,control_adpt, width=width, align='center', alpha=0.5,ecolor='black', capsize=5, edgecolor='k', color='tab:gray')
-ax_10.bar(x[1], optBeta_adpt_mean, width=width, align='center', alpha=0.5,ecolor='black', capsize=5, edgecolor='k', color=colors[2], label=labels[2]) #color='tab:gray',
-ax_10.bar(x[1]+width, BG_patient_adpt, width=width, align='center', alpha=0.5,ecolor='black', capsize=5, edgecolor='k', color='tab:purple', label=labels[3])
-#ax_10.errorbar(conditions[:2], angle_err_mean, yerr=angle_err_std, ls='none', color='black',  elinewidth=0.75, capsize=1.5) # ecolor='lightslategray',
-#ax_10.errorbar(x+ width, human_angle_error, yerr=human_err_std, ls='none', color='black',  elinewidth=0.75, capsize=1.5) # ecolor='lightslategray',
+ax_10.bar(x[0], model_adpt_means[0], width=width, align='center', alpha=0.5,ecolor='black', capsize=5, edgecolor='k', color=colors[1]) #color='tab:gray',
+ax_10.bar(x[0]+width, human_adpt_means[0], width=width, align='center', alpha=0.5,ecolor='black', capsize=5, edgecolor='k', color='tab:gray')
+ax_10.bar(x[1], model_adpt_means[1], width=width, align='center', alpha=0.5,ecolor='black', capsize=5, edgecolor='k', color=colors[2], label=labels[2]) #color='tab:gray',
+ax_10.bar(x[1]+width, human_adpt_means[1], width=width, align='center', alpha=0.5,ecolor='black', capsize=5, edgecolor='k', color='tab:purple', label=labels[3])
+ax_10.errorbar(conditions[:2], model_adpt_means, yerr=model_adpt_sde, ls='none', color='black',  elinewidth=0.75, capsize=1.5) # ecolor='lightslategray',
+ax_10.errorbar(x+ width, human_adpt_means, yerr=human_adpt_sde, ls='none', color='black',  elinewidth=0.75, capsize=1.5) # ecolor='lightslategray',
 ax_10.axhline(0, color='black', linewidth=1)
 ax_10.spines['bottom'].set_visible(False)
 ax_10.set_xticks(x + width/2)
 ax_10.set_xticklabels(conditions[:2])
-ax_10.set_ylim([-10, 30])
+ax_10.set_ylim([-15, 35])
 #ax_10.set_yticks([0,5,10,15])
 ax_10.spines['right'].set_visible(False)
 ax_10.spines['top'].set_visible(False)
-ax_10.set_ylabel('Residual error [deg]')
+ax_10.set_ylabel('Adaptation [cm]')
+ax_10.set_title('Reversal task: model vs data', fontsize=font_s)
 ax_10.xaxis.set_ticks_position('none') 
-ax_10.yaxis.set_ticks_position('none') 
+#ax_10.yaxis.set_ticks_position('none') 
 ax_10.legend(loc='upper left', bbox_to_anchor=(0.2, legend_height), frameon=False,fontsize=font_s, ncol=2)
 
 
-
+## --------------------- Model predictions across \beta for reversal task -------------
 # Model predicted adaptation at the final perturbation trial (i.e., amount of adaptation)
 Mixed_25_seed_acc = np.array(Mixed_25_seed_acc)
 Mixed_50_seed_acc = np.array(Mixed_50_seed_acc)
@@ -305,15 +313,36 @@ Mixed25_error =  100 * Mixed_25_seed_acc[:,final_prtb_trial]
 Mixed50_error =  100 * Mixed_50_seed_acc[:,final_prtb_trial]
 Mixed75_error =  100 * Mixed_75_seed_acc[:,final_prtb_trial]
 EBL_error =  100 * EBL_seed_acc[:,final_prtb_trial]
+
+adpt_betas_mean = [RBL_error.mean(), Mixed25_error.mean(), Mixed50_error.mean(), Mixed75_error.mean(), EBL_error.mean()]
+adpt_betas_sde = [RBL_error.std(), Mixed25_error.std(), Mixed50_error.std(), Mixed75_error.std(), EBL_error.std()] / np.sqrt(5)
+
+conditions = [0,25,50,75,100]
+condition_labels = ['0%', '25%','50%','75%', '100%']
+ax_12 = fig.add_subplot(gs[0,3])
+ax_12.errorbar(conditions, adpt_betas_mean, yerr=adpt_betas_sde, capsize=3, fmt="r--o", ecolor = "black",markersize=4,color='tab:orange',alpha=0.5)
+ax_12.spines['right'].set_visible(False)
+ax_12.spines['top'].set_visible(False)
+ax_12.set_ylabel('Residual error [cm]')
+ax_12.set_xlabel('Learning contribution \n (CB vs DA)')
+ax_12.set_title('Reversal task: model predictions', fontsize=font_s)
+ax_12.set_xticks([0,25,50,75,100])
+ax_12.set_xticklabels(condition_labels)
+ax_12.xaxis.set_ticks_position('none') 
+#ax_12.yaxis.set_ticks_position('none') 
+
+
 ## ======================================================================================
 
+if save_file:
+    plt.savefig('/Users/px19783/Desktop/neurips_plot_1', format='png', dpi=1400)
 
 
 ## ================================= PLOT RESULTS FROM dy/da PERTURBATIONS ======================================
 
 fig = plt.figure(figsize=(7, 3))
 #gs = fig.add_gridspec(nrows=2, ncols=3, height_ratios=[1,1])
-gs = fig.add_gridspec(nrows=2, ncols=4, wspace=0.7, hspace=0.6, left=0.075, right=0.95, bottom=0.1, top=0.9)#, height_ratios=[1,0.2,1])
+gs = fig.add_gridspec(nrows=2, ncols=4, wspace=0.8, hspace=0.95, left=0.065, right=0.98, bottom=0.15, top=0.9)#, height_ratios=[1,0.2,1])
 
 font_s = 7
 mpl.rc('font', size=font_s)
@@ -357,7 +386,7 @@ for o in mean_xy_outcomeS:
     y_traj = o[sampled_trials,...,1]#, indx_target_plotted]
     plot_target_indx = 2
     # Plot endpoints for each target
-    ax.scatter(x_traj[:,plot_target_indx], y_traj[:,plot_target_indx], color='tab:blue', s=15, alpha=0.65, marker='x', label='reaching outcomes')
+    ax.scatter(x_traj[:,plot_target_indx], y_traj[:,plot_target_indx], color='tab:blue', s=15, alpha=0.65, marker='x', label='predicted reaching outcome')
     #ax.scatter(x_traj[:,0], y_traj[:,0], color='tab:brown', s=12, alpha=0.65, marker='.')
     #ax.scatter(x_traj[:,1], y_traj[:,1], color='tab:blue', s=15, alpha=0.65, marker='x')
     #ax.scatter(x_traj[:,2], y_traj[:,2], color='tab:purple', s=12, alpha=0.65, marker='.')
@@ -367,16 +396,20 @@ for o in mean_xy_outcomeS:
     #ax.scatter(x_targ[1], y_targ[1], color='tab:red', s=15, alpha=0.65, marker='*')
     #ax.scatter(x_targ[2], y_targ[2], color='tab:purple', s=12, alpha=0.65, marker='*')
     ax.set_ylim([0.5,0.7])
-    ax.set_xlim([-0.05,0.09])
-    ax.set_xticks([])
-    ax.set_yticks([])
+    ax.set_xlim([-0.1,0.09])
+    if e>0:
+        ax.set_xlabel("x-axis")
+    if i == 1 or e==1:
+        ax.set_ylabel("y-axis")
+    #ax.set_xticks([])
+    #ax.set_yticks([])
     ax.spines['right'].set_visible(False)
     ax.spines['top'].set_visible(False)
-    ax.xaxis.set_ticks_position('none') 
-    ax.yaxis.set_ticks_position('none') 
+    #ax.xaxis.set_ticks_position('none') 
+    #ax.yaxis.set_ticks_position('none') 
     ax.set_title(titles[i+e-1],fontsize=font_s)#,fontweight='extra bold')
     if i+e >3:
-        ax.legend(loc='lower left', bbox_to_anchor=(-1.2, 1.3), frameon=False,fontsize=font_s, ncol=2)
+        ax.legend(loc='lower left', bbox_to_anchor=(-1.4, 1.25), frameon=False,fontsize=font_s, ncol=2)
 
 ## ==========================================================
 
@@ -436,14 +469,15 @@ ax.errorbar(conditions, dysmetria_mean_score, yerr=dysmetria_std_score, capsize=
 ax.spines['right'].set_visible(False)
 ax.spines['top'].set_visible(False)
 ax.set_ylabel('Dysmetria score')
-ax.set_xlabel('"dysfunctional-CB" \n contribution')
+ax.set_xlabel('Learning contribution \n ("dysfunctional-CB" vs DA)')
+ax.set_title('Predicted dysmetria', fontsize=font_s)
 ax.set_xticks([0,25,50,75,100])
 ax.set_xticklabels(condition_labels)
 ax.xaxis.set_ticks_position('none') 
-ax.yaxis.set_ticks_position('none') 
+#ax.yaxis.set_ticks_position('none') 
 
 
-## ======= Plot angle accuracy =============
+## ------- Plot angle accuracy -------------
 angle_acc = np.array([RBL_angle_acc[:,sampled_trials], Mix25_angle_acc[:,sampled_trials],Mix50_angle_acc[:,sampled_trials],Mix75_angle_acc[:,sampled_trials],EBL_angle_acc[:,sampled_trials]])
 angle_acc = angle_acc.reshape(5,-1)
 sde_norm = np.sqrt(len(sampled_trials)*5)
@@ -467,9 +501,39 @@ ax.set_ylabel('Error [deg]')
 #ax.set_xlabel('lesioned-CB contribution')
 ax.set_xticks([0,1])
 ax.set_xticklabels(['"dysfunctional-CB" \n driven', 'DA driven'])
+ax.set_title('Predicted impairments', fontsize=font_s)
 ax.xaxis.set_ticks_position('none') 
-ax.yaxis.set_ticks_position('none') 
+#ax.yaxis.set_ticks_position('none') 
+
+
+## ===================== PLOT OPTIMAL \beta ACROSS SENSORY NOISE =====================
+
+main_file_dir = os.path.join(root_dir,'..','..','ToyNN','results')
+file_dir = os.path.join(main_file_dir,'BestBeta_sensory_noise.npy')
+
+data = np.load(file_dir,allow_pickle=True)
+sensory_noises = data[0]
+best_betas = np.stack(data[1:])
+
+best_beta_mean = best_betas.mean(axis=0)
+best_beta_ste = best_betas.std(axis=0) / np.sqrt(5)
+
+ax = fig.add_subplot(gs[:,3])
+conditions = sensory_noises
+condition_labels = ['0%', '25%','50%','75%', '100%']
+ax.errorbar(conditions, best_beta_mean, yerr=best_beta_ste, capsize=3, fmt="r--o", ecolor = "black",markersize=4,color='tab:orange',alpha=0.5)
+ax.spines['right'].set_visible(False)
+ax.spines['top'].set_visible(False)
+ax.set_ylabel('Optimal $\\beta$')
+ax.set_xlabel('Sensory noise level')
+ax.set_title('Optimal CB & DA \n learning combination', fontsize=font_s)
+#ax.set_yticks([0,25,50,75,100])
+#ax.set_yticklabels(condition_labels)
+ax.xaxis.set_ticks_position('none') 
 
 plt.tight_layout()
-plt.show()
-#plt.savefig('/Users/px19783/Desktop/neurips_plot', format='png', dpi=1400)
+
+if save_file:
+    plt.savefig('/Users/px19783/Desktop/neurips_plot_2', format='png', dpi=1400)
+else:
+    plt.show()

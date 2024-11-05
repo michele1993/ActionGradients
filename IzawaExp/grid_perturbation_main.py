@@ -70,6 +70,7 @@ for s in seeds:
         tot_accuracy = []
         tot_actions = []
         tot_outcomes = []
+        tot_grad = []
 
         # start with a zero perturbation
         current_perturbation = 0
@@ -118,13 +119,14 @@ for s in seeds:
             # Update actor based on combined action gradient
             #if ep > pre_train:
             est_y = estimated_model.step(action)  # re-estimate values since model has been updated
-            CAG.update(y, est_y, action, mu_a, std_a, error, delta_rwd)
+            grad = CAG.update(y, est_y, action, mu_a, std_a, error, delta_rwd)
 
             # Store variables 
             accuracy = np.sqrt(error.detach().numpy())
             tot_accuracy.append(accuracy)
             tot_actions.append(action.detach().numpy())
             tot_outcomes.append(true_y.detach().numpy() - target) # make it so that 0 radiants refer to the target
+            tot_grad.append(grad.detach().numpy())
             
         outcome_variability = np.std(tot_outcomes[-fixed_trials:])
         print("Beta: ", beta)
@@ -133,9 +135,11 @@ for s in seeds:
         label = "Mixed_"+str(beta)
         outcome_var_dir = os.path.join(acc_dir,label+'_outcome_variability') # For the mixed model
         outcome_tot_dir = os.path.join(acc_dir,label+'_trajectories') # For the mixed model
+        grad_dir = os.path.join(acc_dir,label+'_gradient') # For the mixed model
 
         # Save all outcomes so that can then plot whatever you want
         if save_file: 
             # Only store final variability
             np.save(outcome_var_dir, outcome_variability)
             np.save(outcome_tot_dir, tot_outcomes)
+            np.save(grad_dir, tot_grad)

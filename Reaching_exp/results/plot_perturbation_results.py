@@ -167,5 +167,5 @@ ax.xaxis.set_ticks_position('none')
 ax.yaxis.set_ticks_position('none') 
 
 plt.tight_layout()
-#plt.show()
-plt.savefig('/Users/px19783/Desktop/CB_perturbation', format='png', dpi=1400)
+plt.show()
+#plt.savefig('/Users/px19783/Desktop/CB_perturbation', format='png', dpi=1400)

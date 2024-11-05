@@ -86,7 +86,7 @@ for s in seeds:
 
     # ----- Load data to reproduce human data -------
     RBL_acc_dir = os.path.join(file_dir,str(s),"Reversed_Mixed_0.0accuracy.npy")
-    ## NOTE: \beta=0.65 seems to best describe BG data
+    ## NOTE: \beta=0.65 seems to describe BG data best 
     optBeta_acc_dir = os.path.join(file_dir,str(s),"Reversed_Mixed_0.65accuracy.npy")
 
     RBL_acc = np.load(RBL_acc_dir)
@@ -116,6 +116,8 @@ EBL_seed_acc = np.array(EBL_seed_acc)
 ## --------------------------------------------
 
 ## -------- Plot data comparison ----------
+# COmpute amount of adaptation during perturbed trials
+# Compute amount of aftereffects during washout
 # Experimental variables
 baseline_trials = 26
 pertubed_trials = 26
@@ -123,23 +125,24 @@ washout_trials = 26
 tot_trials = baseline_trials + pertubed_trials + washout_trials
 final_prtb_trial = baseline_trials + pertubed_trials -2
 
-RBL_adpt =  100*(RBL_seed_acc[:,baseline_trials] - RBL_seed_acc[:,final_prtb_trial])
-optBeta_adpt =  100*(optBeta_seed_acc[:,baseline_trials] - optBeta_seed_acc[:,final_prtb_trial])
+## Compute adaptation amount as difference from end of baseline to end of perturbed trials (before whashout)
+RBL_adpt =  100 * (RBL_seed_acc[:,baseline_trials] - RBL_seed_acc[:,final_prtb_trial])
+optBeta_adpt =  100 * (optBeta_seed_acc[:,baseline_trials] - optBeta_seed_acc[:,final_prtb_trial])
 #print(RBL_seed_acc[0, baseline_trials:final_prtb_trial+1],'\n change \n', EBL_seed_acc[0,baseline_trials:final_prtb_trial+1])
 #exit()
-RBL_washout = 100*RBL_seed_acc[:,final_prtb_trial+1]
-optBeta_washout = 100*optBeta_seed_acc[:,final_prtb_trial+1]
+RBL_washout = 100 * RBL_seed_acc[:,final_prtb_trial+1]
+optBeta_washout = 100 * optBeta_seed_acc[:,final_prtb_trial+1]
 #print(EBL_seed_acc[0, final_prtb_trial:], RBL_seed_acc[0,final_prtb_trial:])
 #exit()
 
-# COmpute mean
+# COmpute mean for both amounts of adaptation and washout
 RBL_adpt_mean = RBL_adpt.mean()
 optBeta_adpt_mean = optBeta_adpt.mean()
 
 RBL_washout_mean = RBL_washout.mean()
 optBeta_washout_mean = optBeta_washout.mean()
 
-# COmpute sde
+# COmpute sde for both amounts of adaptation and washout
 RBL_adpt_sde = RBL_adpt.std() / np.sqrt(5)
 optBeta_adpt_sde = optBeta_adpt.std() / np.sqrt(5)
 
@@ -148,11 +151,11 @@ optBeta_washout_sde = optBeta_washout.std() / np.sqrt(5)
 
 print(RBL_adpt_mean, control_adpt)
 print(optBeta_adpt_mean, BG_patient_adpt)
-#print(RBL_washout_mean, control_washout)
+print(RBL_washout_mean, control_washout)
 #print(EBL_washout_mean, BG_patient_washout)
 
-print('\n', BG_patient_adapt_sde)
-print('\n', control_adapt_sde)
+#print('\n', BG_patient_adapt_sde)
+#print('\n', control_adapt_sde)
 
 
 ## --------- Plot model prediction ----
@@ -165,8 +168,8 @@ EBL_error =  100 * EBL_seed_acc[:,final_prtb_trial]
 print(RBL_error.mean(), Mixed25_error.mean(), Mixed50_error.mean(), Mixed75_error.mean(), EBL_error.mean())
 
 
-#plt.scatter(PD_adpt,PD_washout)
-#plt.scatter(HD_adpt,HD_washout)
-#plt.scatter(control_PD_adpt,control_PD_washout)
-#plt.scatter(control_HD_adpt,control_HD_washout)
-#plt.show()
+plt.scatter(PD_adpt,PD_washout)
+plt.scatter(HD_adpt,HD_washout)
+plt.scatter(control_PD_adpt,control_PD_washout)
+plt.scatter(control_HD_adpt,control_HD_washout)
+plt.show()
