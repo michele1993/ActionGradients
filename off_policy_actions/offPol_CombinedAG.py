@@ -63,3 +63,17 @@ class CombActionGradient:
         E_grad = torch.tensor(E_dr_dmu_a)
 
         return E_grad 
+
+    def compute_offlineRBLGrad(self, new_p, old_p, action, mu_a, std_a, delta_rwd):
+        """ Compute reward-based learning offpolicy (REINFORCE) action gradient 
+        """
+
+        with torch.no_grad():
+            # offpolicy mean action grad 
+            R_dr_dmu_a = (1/(std_a**2)) * (new_p/old_p) * (action - mu_a) * delta_rwd
+
+        #Combine two grads relative to mu and std into one vector
+        R_grad = torch.tensor(R_dr_dmu_a)
+
+        return R_grad 
+

@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.optim as opt
+from torch.distributions.normal import Normal
 
 class Actor(nn.Module):
 
@@ -32,11 +33,20 @@ class Actor(nn.Module):
         # Compute mean and log(std) of Gaussian policy
         mu_a = self(y_star) # Assume actor output log(std) so that can then transform it in positive value
 
-        # Sample Gaussian perturbation
+        # Sample Gaussian perturbation to compute action
         a_noise = torch.randn_like(mu_a) * fixd_a_noise
+        action = mu_a + a_noise
+
+        # Compute action prob
+        p_action = self.compute_p(action=action, mu=mu_a, std=fixd_a_noise)
 
         # Compute action from sampled Gaussian policy
-        return mu_a + a_noise, mu_a
+        return action, mu_a, p_action
+
+    def compute_p(self, action, mu, std):
+        dist = Normal(loc=mu, scale= std)
+        return torch.exp(dist.log_prob(action))
+
 
     def update(self,loss):
 
