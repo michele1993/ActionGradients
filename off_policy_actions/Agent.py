@@ -20,9 +20,9 @@ class Actor(nn.Module):
 
         ## Use weight_decay to mimick forgetting 
         if opt_type=="SGD":
-            self.optimiser = opt.SGD(self.parameters(), ln_rate, weight_decay=0.1)#, momentum=0.9)
+            self.optimiser = opt.SGD(self.parameters(), ln_rate, weight_decay=0.25)#, momentum=0.9)
         else:
-            self.optimiser = opt.Adam(self.parameters(), ln_rate, weight_decay=0.1)
+            self.optimiser = opt.Adam(self.parameters(), ln_rate, weight_decay=0.25)
 
     def forward(self,y_star):
         x_1 = self.l1(y_star)
