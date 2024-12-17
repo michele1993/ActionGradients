@@ -106,7 +106,7 @@ for ep in range(0,trials):
 ## ===== Plot the results ======
 fig = plt.figure(figsize=(6, 4))
 #gs = fig.add_gridspec(nrows=2, ncols=3, height_ratios=[1,1])
-gs = fig.add_gridspec(nrows=3, ncols=2, wspace=0.2, hspace=0.5, left=0.2, right=0.95, bottom=0.1, top=0.95)#, height_ratios=[1,0.2,1])
+gs = fig.add_gridspec(nrows=2, ncols=3, wspace=0.8, hspace=0.3, left=0.1, right=0.95, bottom=0.1, top=0.95)#, height_ratios=[1,0.2,1])
 
 font_s = 7
 mpl.rc('font', size=font_s)
@@ -121,25 +121,26 @@ titles = ['Cortical sensory error', 'CB prediction', 'BG synaptic change']
 y_label = ['Predicted\nerror', 'Predicted\nvalue', r'$ \Delta $ w']
 
 ## ---- 1st plot
-e=0
-for data in [data_1,data_2]:
-    for i in range(len(data)):
+#for data in [data_1,data_2]:
+for e in range(len(data_1)):
+#    for i in range(len(data)):
+    i=0
+    for data in [data_1,data_2]:
         ax = fig.add_subplot(gs[i,e])
-        ax.plot(t, data[i], color='tab:orange', alpha=0.5, lw=1)
+        ax.plot(t, data[e], color='tab:orange', alpha=0.5, lw=1)
         ax.axhline(y=0, color='k', ls='--', lw=0.5)
-        if e==0:
-            ax.set_ylabel(y_label[i])
-        if i <2:
+        ax.set_ylabel(y_label[e])
+        if e <2:
             ax.set_ylim([-1.5, 1.5])
         ax.set_xlim([0, change_model_ep-1])
         #ax.set_xticks([])
         ax.spines['right'].set_visible(False)
         ax.spines['top'].set_visible(False)
-        ax.set_title(titles[i], fontsize=font_s) 
+        if i ==0:
+            ax.set_title(titles[e], fontsize=font_s) 
 
-        if i == len(data)-1:
-            ax.set_xlabel('Trials')
-    e+=1
+        ax.set_xlabel('Trials')
+        i+=1
 
 
 plt.show()
