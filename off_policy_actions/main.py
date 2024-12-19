@@ -1,25 +1,32 @@
 import os
-from Linear_motor_model  import Mot_model
-from Agent import *
+from NN_motor_model  import Mot_model
+from NN_Agent import *
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
-from offPol_CombinedAG import CombActionGradient
+from offPol_NN_CombinedAG import CombActionGradient
 from replayBuffer import MemoryBuffer
 
 
 """ Generate a EBL or RBL policy with decaying weights, then show offline RBL allow consolidation of RBL and EBL by preventing weight decay"""
 
-seeds = [47382, 87102, 71092, 19283, 32912]
-online_learning_trials = 150
-offline_trials = 150
+seeds = [47382]#, 87102, 71092, 19283, 32912]
+
+
+online_learning_trials = 5000
+offline_trials = 1000
 tot_trials = online_learning_trials + offline_trials
 offline_learning = True
-t_print = 10
-save_file = True
-beta = 0
+t_print = 100
+save_file = False
+beta = 1
 # Plot how long term retention due to RBL replay is affected by DA deficiencies
 DA_reduction = 1 
+
+## set dimension
+action_s = 3
+output_s = 1
+n_targets = 1
 
 # Model file names for storing base on original beta value
 if beta ==0:
@@ -37,22 +44,22 @@ else:
 
 # Set noise variables
 sensory_noise = 0.01
-fixd_a_noise = 0.1 # set to experimental data value
+fixd_a_noise = 0.02 # set to experimental data value
 
 # Set update variables
-a_ln_rate = 0.01
+a_ln_rate = 0.001#0.001
 c_ln_rate = 0.1
-model_ln_rate = 0.01
-buffer_size = 100
+model_ln_rate = 0.001
+buffer_size = 10
 
-## Peturbation:
+# Target
+y_star = torch.clip(torch.randn(n_targets,output_s),-1,1)
+cue = torch.eye(n_targets,n_targets)
 
-target = 6* 0.1056 # random target angle : 36 degrees 
-y_star = torch.tensor([target],dtype=torch.float32)
-
-model = Mot_model()
+model = Mot_model(action_s=action_s,output_s=output_s)
 
 seed_acc = []
+print("\nBeta: ",beta)
 for s in seeds:
 
     # Set random seeds
@@ -60,21 +67,21 @@ for s in seeds:
     np.random.seed(s)
 
     # Initialise components
-    actor = Actor(ln_rate = a_ln_rate)#, opt_type='SGD')
+    actor = Actor(input_s=n_targets, action_s=action_s, ln_rate = a_ln_rate)
+    estimated_model = Mot_model(action_s=action_s,output_s=output_s,ln_rate=model_ln_rate, Fixed=False)
     CAG = CombActionGradient(actor, beta)
-    estimated_model = Mot_model(ln_rate=model_ln_rate,lamb=None, Fixed = False)
     buffer = MemoryBuffer(size=buffer_size)
 
     tot_accuracy = []
     mean_rwd = 0
     trial_acc = []
 
-    print("\n New seed: \n")
+    #print("\n New seed: \n")
 
-    for ep in range(1,tot_trials+1):
+    for ep in range(0,tot_trials+1):
 
         # Sample action from Gaussian policy
-        action, mu_a, p_action = actor.computeAction(y_star, fixd_a_noise)
+        action, mu_a, std_a, p_action = actor.computeAction(cue, fixd_a_noise)
 
         # Perform action in the env
         true_y = model.step(action.detach())
@@ -84,8 +91,10 @@ for s in seeds:
 
         # Compute differentiable rwd signal
         y.requires_grad_(True)
-        rwd = (y - y_star)**2 # it is actually a punishment
-        trial_acc.append(torch.sqrt(rwd.detach()).item())
+        rwd = torch.mean((y - y_star)**2, dim=-1,keepdim=True) # it is actually a punishment
+        true_rwd = torch.mean((true_y - y_star)**2,dim=-1,keepdim=True) # it is actually a punishment
+        trial_acc.append(torch.mean(torch.sqrt((true_y - y_star)**2),dim=-1).detach().mean().item())
+
         
         ## ====== Use running average to compute RPE =======
         delta_rwd = rwd - mean_rwd
@@ -93,7 +102,7 @@ for s in seeds:
         ## ==============================================
 
         # Store data in buffer
-        buffer.store_transition(y_star, action.detach(), delta_rwd.detach(), p_action.detach())
+        buffer.store_transition(cue, action.detach(), delta_rwd.detach(), p_action.detach())
 
         # Update the model
         est_y = estimated_model.step(action.detach())
@@ -105,8 +114,8 @@ for s in seeds:
         ## ----- Compute two action gradients ----
         if ep <= online_learning_trials:
             # Learn only based on the desired online action gradients (controlled by \beta)
-            R_grad = CAG.computeRBLGrad(action, mu_a, fixd_a_noise, delta_rwd)
-            E_grad = CAG.computeEBLGrad(y, est_y, action, mu_a, delta_rwd)
+            R_grad = CAG.computeRBLGrad(action, mu_a, std_a, delta_rwd)
+            E_grad = CAG.computeEBLGrad(y, est_y, action, mu_a, std_a, delta_rwd)
 
         # At the end of learning trials set EBL gradient to zero, preventing any online EBL learning to occur
         # with weight decay briging weight back to zero, unless RBL offline learning kicks in
@@ -115,32 +124,35 @@ for s in seeds:
             beta = 0
             # Set both gradient to zero for precaution to prevent any learning
             # other than the offline RBL grad computed below when offline_learning=True
-            E_grad = torch.tensor([0])
-            R_grad = torch.tensor([0])
+            E_grad = torch.zeros_like(E_grad)
+            R_grad = torch.zeros_like(R_grad)
             
             # Compute offline RBL action gradient if offline learning taking place
             if offline_learning:
+                # Reset optimizer state for forgetting phase
+                if ep == online_learning_trials+1:
+                    print("\n Offline learning \n")
+                    #actor.set_optimizer()
+
                 # Sample from memory buffer
-                y_star, action, delta_rwd, old_p_action = buffer.sample_transition()
+                cue, action, delta_rwd, old_p_action = buffer.sample_transition()
                 # DA deficits
                 delta_rwd *= DA_reduction
                 # COmpute mean based on new (offline update) policy
-                _, mu_a, _ = actor.computeAction(y_star,fixd_a_noise)
+                _, mu_a, std_a, _ = actor.computeAction(cue,fixd_a_noise)
                 # COmpute new prob. for old action based on new (offline update) policy
-                new_p_action = actor.compute_p(action=action, mu=mu_a, std=fixd_a_noise).detach()
+                new_p_action = actor.compute_p(action=action, mu=mu_a, std=std_a).detach()
                 # Compute the offpolicy RBL action gradient
-                R_grad = CAG.compute_offlineRBLGrad(new_p=new_p_action, old_p=old_p_action, action=action, mu_a = mu_a, std_a=fixd_a_noise, delta_rwd=delta_rwd)
+                R_grad = CAG.compute_offlineRBLGrad(new_p=new_p_action, old_p=old_p_action, action=action, mu_a = mu_a, std_a=std_a, delta_rwd=delta_rwd)
 
         # Combine the two gradients 
         comb_action_grad = beta * E_grad + (1-beta) * R_grad 
 
-        action_variables = mu_a 
+        action_variables = torch.cat([mu_a, std_a],dim=-1)
         ## ----------------------------
         # Update the action
         agent_grad = actor.ActionGrad_update(comb_action_grad, action_variables)
 
-        if ep == online_learning_trials+1:
-            print("\n Offline learning \n")
 
         # Store variables after pre-train (including final trials without a perturbation)
         if ep % t_print ==0:
@@ -153,6 +165,10 @@ for s in seeds:
     seed_acc.append(tot_accuracy)                
 
 seed_acc = np.array(seed_acc)
+
+#print('Online performance: ', seed_acc.mean(axis=0)[online_learning_trials//t_print])
+#print('Retention: ', seed_acc.mean(axis=0)[-1])
+exit()
 
 ## ===== Save results =========
 # Create directory to store results
