@@ -67,7 +67,7 @@ x = np.array([0,1])
 mean_values = [final_RBL, final_offline_RBL, final_EBL, final_offline_EBL]
 width=0.3
 first_row_adjustment = 0.04
-labels = ['DA-driven', 'DA-driven+DA-replay', 'CB-driven','CB-driven+DA-replay']
+labels = ['DA-driven\nNo-replay', 'DA-driven\n+DA-replay', 'CB-driven\nNo-replay','CB-driven\n+DA-replay']
 no_offline = [final_RBL, final_EBL]
 no_offline_std = [final_RBL_std, final_EBL_std]
 offline = [final_offline_RBL, final_offline_EBL]
@@ -75,42 +75,47 @@ offline_std = [final_offline_RBL_std, final_offline_EBL_std]
 
 
 ax2[0].set_position(ax2[0].get_position().translated(0, first_row_adjustment))
-ax2[0].bar(x[0], mean_values[0], width=width, align='center', alpha=0.5,ecolor='black', capsize=5, edgecolor='k',color='tab:red')#,label=labels[0])#, color=colors[0], label=labels[0]) #color='tab:gray',
-ax2[0].bar(x[0]+width,mean_values[1], width=width, align='center', alpha=0.5,ecolor='black', capsize=5, edgecolor='k', hatch='//',color='tab:red',label=labels[1])#, color='tab:gray', label=labels[1])
-ax2[0].bar(x[1], mean_values[2], width=width, align='center', alpha=0.5,ecolor='black', capsize=5, edgecolor='k',color='tab:blue')#,label=labels[2])#, color=colors[1], label=labels[2]) #color='tab:gray',
-ax2[0].bar(x[1]+width,mean_values[3], width=width, align='center', alpha=0.5,ecolor='black', capsize=5, edgecolor='k', hatch='//',color='tab:blue',label=labels[3])#, color='k', label=labels[3])
+ax2[0].bar(x[0], mean_values[0], width=width, align='center', alpha=0.5,ecolor=None, capsize=5, edgecolor=None,color='tab:red',label=labels[0])#, color=colors[0], label=labels[0]) #color='tab:gray',
+ax2[0].bar(x[0]+width,mean_values[1], width=width, align='center', alpha=1,ecolor=None, capsize=5, edgecolor=None, hatch=None,color='tab:red',label=labels[1])#, color='tab:gray', label=labels[1])
+ax2[0].bar(x[1], mean_values[2], width=width, align='center', alpha=0.5,ecolor=None, capsize=5, edgecolor=None,color='tab:blue',label=labels[2])#, color=colors[1], label=labels[2]) #color='tab:gray',
+ax2[0].bar(x[1]+width,mean_values[3], width=width, align='center', alpha=1,ecolor=None, capsize=5, edgecolor=None, hatch=None,color='tab:blue',label=labels[3])#, color='k', label=labels[3])
 ax2[0].set_ylabel('Long-term accuracy')
 ax2[0].errorbar(x, no_offline, yerr=no_offline_std, ls='none', color='black',  elinewidth=0.75, capsize=1.5) # ecolor='lightslategray',
 ax2[0].errorbar(x+width, offline, yerr=offline_std, ls='none', color='black',  elinewidth=0.75, capsize=1.5) # ecolor='lightslategray',
 ax2[0].spines['right'].set_visible(False)
 ax2[0].spines['top'].set_visible(False)
-ax2[0].legend(loc='lower left', bbox_to_anchor=(-0.5, -0.35), frameon=False,fontsize=font_s, ncol=1)
 ax2[0].set_xticks(x + width/2)
 ax2[0].set_xticklabels(['DA-driven','CB-driven'])
 ax2[0].set_title("DA-replay drives\nlong-term performance", fontsize=font_s)
 ax2[0].xaxis.set_ticks_position('none')
+#ax2[0].legend(loc='lower left', bbox_to_anchor=(-0.5, -0.35), frameon=False,fontsize=font_s, ncol=4)
+pa1 = Patch(facecolor='tab:red',alpha=0.5) # edgecolor='black')
+pa2 = Patch(facecolor='tab:blue',alpha=0.5) # edgecolor='black')
+pa3 = Patch(facecolor='tab:red',alpha=1) # edgecolor='black')
+pa4 = Patch(facecolor='tab:blue',alpha=1) # edgecolor='black')
+ax2[2].legend(handles=[pa1,pa3,pa2,pa4],labels=['','','No-replay','DA-replay (post-learning)'], ncol=2, handletextpad=0.5, handlelength=1.5, columnspacing=-0.3, loc='lower left', bbox_to_anchor=(-3.7, -0.3), frameon=False,fontsize=font_s)
 
 # Plot RBL offline vs no offline performances
 offline_steps = np.arange(n_online_steps, n_online_steps+n_offline_steps,1)
 ax2[1].plot(t, mean_off_RBL, color='tab:red', alpha=1)
-ax2[1].axvline(n_online_steps, ls='--', lw=0.75,color='k', label="end-of-task")
-ax2[1].fill_between(offline_steps, 0,0.8, color='tab:gray',alpha=0.25, label='retention period')
+ax2[1].axvline(n_online_steps, ls='--', lw=0.75,color='k', label="End-of-task")
+ax2[1].fill_between(offline_steps, 0,0.8, color='tab:gray',alpha=0.25, label='Retention\nperiod')
 ax2[1].plot(t, mean_RBL, color='tab:red', alpha=0.5)#, label='No-replay')
 ax2[1].spines['right'].set_visible(False)
 ax2[1].spines['top'].set_visible(False)
 ax2[1].set_title("DA-replay consolidates\n DA-driven learning", fontsize=font_s, pad=10)
 ax2[1].set_ylabel("Accuracy")
 ax2[1].set_xlabel("Steps")
-ax2[1].legend(loc='lower left', bbox_to_anchor=(-0.5, -0.3), frameon=False,fontsize=font_s, ncol=3)
+ax2[1].legend(loc='lower left', bbox_to_anchor=(0.1, -0.35), frameon=False,fontsize=font_s, ncol=3)
 ax2[1].set_ylim([0,0.7])
 ax2[1].set_xlim([0,50])
 ax2[1].set_xticks([0,25])
 
 # Plot EBL offline vs no offline performances
-pa1 = Patch(facecolor='tab:red',alpha=1) # edgecolor='black')
-pa2 = Patch(facecolor='tab:blue',alpha=1) # edgecolor='black')
-pa3 = Patch(facecolor='tab:red',alpha=0.5) # edgecolor='black')
-pa4 = Patch(facecolor='tab:blue',alpha=0.5) # edgecolor='black')
+#pa1 = Patch(facecolor='tab:red',alpha=1) # edgecolor='black')
+#pa2 = Patch(facecolor='tab:blue',alpha=1) # edgecolor='black')
+#pa3 = Patch(facecolor='tab:red',alpha=0.5) # edgecolor='black')
+#pa4 = Patch(facecolor='tab:blue',alpha=0.5) # edgecolor='black')
 ax2[2].plot(t, mean_off_EBL, color='tab:blue', alpha=1)
 ax2[2].plot(t, mean_EBL, color='tab:blue', alpha=0.5)#, label='No-replay')
 ax2[2].axvline(n_online_steps, ls='--', lw=0.75,color='k')
@@ -123,10 +128,9 @@ ax2[2].set_xlabel("Steps")
 ax2[2].set_ylim([0,0.7])
 ax2[2].set_xlim([0,50])
 ax2[2].set_xticks([0,25])
-custom_legend = [Patch(facecolor='blue', edgecolor='red', alpha=0.5,label='No-replay')]
-
+#custom_legend = [Patch(facecolor='blue', edgecolor='red', alpha=0.5,label='No-replay')]
+#ax2[2].legend(handles=[pa3,pa4],labels=['','No DA-replay'], ncol=3, handletextpad=0.5, handlelength=1.5, columnspacing=-0.3, loc='lower left', bbox_to_anchor=(0.3, -0.3), frameon=False,fontsize=font_s)
 #ax2[2].legend(handles=(pa1,pa2),labels=('No DA-replay','No DA-replay'), ncol=1, loc='lower left', bbox_to_anchor=(1, -0.33), frameon=False,fontsize=font_s)
-ax2[2].legend(handles=[pa3,pa4],labels=['','No DA-replay'], ncol=3, handletextpad=0.5, handlelength=1.5, columnspacing=-0.3, loc='lower left', bbox_to_anchor=(0.3, -0.3), frameon=False,fontsize=font_s)
 #ax2[2].legend(handles=[pa1,pa2,pa3,pa4],labels=['','DA-replay','','No DA-replay'], ncol=4, handletextpad=0.5, handlelength=1, columnspacing=0.5, loc='lower left', bbox_to_anchor=(0.3, -0.3), frameon=False,fontsize=font_s)
 #ax2[2].legend(handles=custom_legend,loc='lower left', bbox_to_anchor=(0.8, -0.33), frameon=False,fontsize=font_s)
               
