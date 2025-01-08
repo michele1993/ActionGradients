@@ -63,7 +63,6 @@ for b in betas:
     Mixed_angle_accuracieS.append(Mixed_angle_acc)
     Mixed_xy_outcomeS.append(Mixed_xy_outcomes)
     Mixed_dir_errorS.append(Mixed_direct_e)
-
 # ------------
 
 # define useful variables
@@ -503,16 +502,17 @@ std_final_acc = []
 CB_contribution_std_final_acc = []
 
 # Action uncertainty place holders
-mean_initial_std = []
-mean_final_std = []
-mean_initial_mu = []
-mean_final_mu = []
+#mean_initial_std = []
+#mean_final_std = []
+#mean_initial_mu = []
+#mean_final_mu = []
 
-std_initial_std = []
-std_final_std = []
+#std_initial_std = []
+#std_final_std = []
 std_difference = []
 policy_std_s=[]
 policy_mean_s=[]
+CB_policy_std_s=[]
 
 beta=0.5 # based on experiments
 CB_label = f'CB_{beta}_contribution_'
@@ -549,33 +549,22 @@ for i in range(len(DA_reduction)):
     CB_contribution_mean_final_acc.append(CB_contribution_mean_accuracy[-1])
     CB_contribution_std_final_acc.append(CB_contribution_std_accuracy[-1])
 
-    ## ---- Extract data for action uncertainty reductions (only for DA only condition) -----
+    ## ---- Extract data for action uncertainty reductions -----
     # Compute percentage reduction between intial action std and final action std for each seed
     std_a_difference = np.abs(np.array(results['std_a'])[:,0] - np.array(results['std_a'])[:,-1]) / np.array(results['std_a'])[:,0] * 100
     std_difference.append(std_a_difference)
 
     # Extract mean and std of policy std
-    #mean_std = np.array(results['std_a']).mean(axis=0)
-    #std_std = np.array(results['std_a']).std(axis=0)
     policy_std = np.array(results['std_a'])
     policy_std_s.append(policy_std)
 
+    # Extract mean and std of policy std for CB contribution
+    CB_policy_std = np.array(results_2['std_a'])
+    CB_policy_std_s.append(CB_policy_std)
+
     # Extract mean of policy mean as well (though not used)
-    #mean_mu = np.array(results['mu_a']).mean(axis=0)
     policy_mu = np.array(results['mu_a'])
     policy_mean_s.append(policy_mu)
-
-    # Store value for each condition
-    # mean std
-    #mean_initial_std.append(mean_std[0])
-    #mean_final_std.append(mean_std[-1])
-    # std std
-    #std_initial_std.append(std_std[0])
-    #std_final_std.append(std_std[-1])
-
-    # Store policy mean as well (though not used)
-    #mean_initial_mu.append(mean_mu[0])
-    #mean_final_mu.append(mean_mu[-1])
 
 # ----- Plot accuracy across DA reduction ----
 conditions = [1,2,3]#,4]
@@ -600,9 +589,14 @@ ax_2.legend(loc='upper left', bbox_to_anchor=(0, 0.4), frameon=False,fontsize=fo
 #ax_2.xaxis.set_ticks_position('none') 
 
 # ----- Plot std reduction from start to end of learning across DA reduction ----
+# DA only
 policy_std_s = np.array(policy_std_s)
 initial_pol_std = policy_std_s[:,:,0]
 final_pol_std = policy_std_s[:,:,-1]
+# DA with CB contribution
+CB_policy_std_s = np.array(CB_policy_std_s)
+CB_initial_pol_std = CB_policy_std_s[:,:,0]
+CB_final_pol_std = CB_policy_std_s[:,:,-1]
 
 ## Assume a signle-boundary Drift-diffusion model (DDM) on top of the Gaussian policy, determining the action response time based on policy uncertainty
 ## the DDM only determines the response time, for this it has a single boundary, the actual decision(action) is given by the Gaussain policy
@@ -612,29 +606,39 @@ drift_function = lambda x: np.exp(-x) # evidence accumulates based on decaying e
 threshold = 1
 
 # Compute action time for policy uncertainty at the end of learning
+# DA
 action_time = threshold/drift_function(final_pol_std)
 mean_action_time = action_time.mean(axis=1)
 std_action_time = action_time.std(axis=1)
+# DA with CB contribution
+CB_action_time = threshold/drift_function(CB_final_pol_std)
+CB_mean_action_time = CB_action_time.mean(axis=1)
+CB_std_action_time = CB_action_time.std(axis=1)
 
-
-mean_std_a_diff = np.array(std_difference).mean(axis=-1)
-std_std_a_diff = np.array(std_difference).std(axis=-1)
 conditions = [1,2,3]#,4]
 condition_labels = ['healthy','x10','x100']#,'x1000']
 ax_2 = fig.add_subplot(gs[1,3])
-#ax_2.set_position(ax_2.get_position().translated(0, first_row_adjustment))
+
+# Plot change in action std from start to end of learning
+#mean_std_a_diff = np.array(std_difference).mean(axis=-1)
+#std_std_a_diff = np.array(std_difference).std(axis=-1)
 #ax_2.errorbar(conditions, mean_std_a_diff, yerr=std_std_a_diff, capsize=3, fmt="r--o", ecolor = "black",markersize=4,color='tab:orange',alpha=0.5)
+
+#Plot movement onset time
 ax_2.errorbar(conditions, mean_action_time, yerr=std_action_time, capsize=3, fmt="r--o", ecolor = "black",markersize=4,color='tab:orange',alpha=0.5)
+#ax_2.errorbar(conditions, CB_mean_action_time, yerr=CB_std_action_time, capsize=3, fmt="r--o", ecolor = "black",markersize=4,color='tab:green',alpha=0.5)
 ax_2.spines['right'].set_visible(False)
 ax_2.spines['top'].set_visible(False)
 #ax_2.set_ylabel('Residual error [deg]')
 ax_2.set_xlabel('DA reduction')
-ax_2.set_ylabel('Uncertainty reduction')
-ax_2.set_title('DA deficits and action uncertainty', fontsize=font_s)
+ax_2.set_ylabel('Time')
+ax_2.set_title('DA deficits and movement onset', fontsize=font_s)
 #ax_2.set_yticks([0,25,50,75,100])
 ax_2.set_xticks([1,2,3])#,4])
 ax_2.set_xticklabels(condition_labels)
+ax_2.set_ylim([1,1.2])
 #ax_2.set_yticklabels(['0%','25%','50%','75%','100%'])
+#ax_2.set_position(ax_2.get_position().translated(0, first_row_adjustment))
 
 ## ----- Plot action distribtuion shift -----
 mean_initial_std = initial_pol_std.mean(axis=1) 
