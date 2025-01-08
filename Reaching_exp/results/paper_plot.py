@@ -280,7 +280,7 @@ human_adpt_sde = [control_adapt_sde, BG_patient_adapt_sde]
 #conditions = ['Control \n (DA driven)', 'BG patients \n (DA-deficiency)']
 conditions = ['Control', 'BG patients']
 labels = ['DA-driven \n (model)', 'human control', 'DA-deficiency \n (model)', 'BG patients']
-colors = ['tab:blue','tab:red','tab:green']
+colors = ['tab:blue','tab:red','tab:pink']
 x = np.array([0,1])
 width=0.3
 ax_10 = fig.add_subplot(gs[0,2])
@@ -289,7 +289,7 @@ ax_10.set_position(ax_10.get_position().translated(0, first_row_adjustment))
 ax_10.bar(x[0], model_adpt_means[0], width=width, align='center', alpha=0.5,ecolor='black', capsize=5, edgecolor='k', color=colors[1]) #color='tab:gray',
 ax_10.bar(x[0]+width, human_adpt_means[0], width=width, align='center', alpha=0.5,ecolor='black', capsize=5, edgecolor='k', color='tab:gray')
 ax_10.bar(x[1], model_adpt_means[1], width=width, align='center', alpha=0.5,ecolor='black', capsize=5, edgecolor='k', color=colors[2], label=labels[2]) #color='tab:gray',
-ax_10.bar(x[1]+width, human_adpt_means[1], width=width, align='center', alpha=0.5,ecolor='black', capsize=5, edgecolor='k', color='tab:purple', label=labels[3])
+ax_10.bar(x[1]+width, human_adpt_means[1], width=width, align='center', alpha=0.8,ecolor='black', capsize=5, edgecolor='k', color='tab:brown', label=labels[3])
 ax_10.errorbar(conditions[:2], model_adpt_means, yerr=model_adpt_sde, ls='none', color='black',  elinewidth=0.75, capsize=1.5) # ecolor='lightslategray',
 ax_10.errorbar(x+ width, human_adpt_means, yerr=human_adpt_sde, ls='none', color='black',  elinewidth=0.75, capsize=1.5) # ecolor='lightslategray',
 ax_10.axhline(0, color='black', linewidth=1)
@@ -494,75 +494,105 @@ for o in mean_xy_outcomeS:
 ## ================ Plot reaching task with binary feedback =====
 
 data_dir = os.path.join(root_dir,'..','..','binary_reaching','results')
-DA_reduction = [1,0.1, 0.01, 0.001]
+DA_reduction = [1,0.1, 0.01]#, 0.001]
 
+# Accuracy place holders
 mean_final_acc = []
+CB_contribution_mean_final_acc = []
+std_final_acc = []
+CB_contribution_std_final_acc = []
+
+# Action uncertainty place holders
 mean_initial_std = []
 mean_final_std = []
 mean_initial_mu = []
 mean_final_mu = []
 
-std_final_acc = []
 std_initial_std = []
 std_final_std = []
 std_difference = []
 
+beta=0.5 # based on experiments
+CB_label = f'CB_{beta}_contribution_'
 # loop around condition of DA reduction
 for i in range(len(DA_reduction)):
+
     label = "DA_decrease_"+str(i)+'.json'
+    label_2 = CB_label+label
+
+    # DA only data
     result_dir = os.path.join(data_dir,label) # For the mixed model
+    # DA + CB contribution data
+    result_dir_2 = os.path.join(data_dir,label_2) # For the mixed model
 
     # Open and read the JSON file
     with open(result_dir, 'r') as file:
             results = json.load(file)
 
-    mean_accuracy = (np.array(results['accuracy'])*100).mean(axis=0) # convert to %
-    mean_std = np.array(results['std_a']).mean(axis=0)
+    # Open and read the JSON file
+    with open(result_dir_2, 'r') as file:
+            results_2 = json.load(file)
 
-    # Compute difference between intial action and std and final action std for each seed
-    std_a_difference = np.abs(np.array(results['std_a'])[:,0] - np.array(results['std_a'])[:,-1])
+    ## ---- Extract data for accuracy ------
+    # Accuracy for DA only
+    mean_accuracy = (np.array(results['accuracy'])*100).mean(axis=0) # convert to %
+    std_accuracy = (np.array(results['accuracy'])*100).std(axis=0)
+    # Accuracy for DA + CB
+    CB_contribution_mean_accuracy = (np.array(results_2['accuracy'])*100).mean(axis=0) # convert to %
+    CB_contribution_std_accuracy = (np.array(results_2['accuracy'])*100).std(axis=0) # convert to %
+
+    mean_final_acc.append(mean_accuracy[-1])
+    std_final_acc.append(std_accuracy[-1])
+    CB_contribution_mean_final_acc.append(CB_contribution_mean_accuracy[-1])
+    CB_contribution_std_final_acc.append(CB_contribution_std_accuracy[-1])
+
+    ## ---- Extract data for action uncertainty reductions (only for DA only condition) -----
+    # Compute percentage reduction between intial action std and final action std for each seed
+    std_a_difference = np.abs(np.array(results['std_a'])[:,0] - np.array(results['std_a'])[:,-1]) / np.array(results['std_a'])[:,0] * 100
     std_difference.append(std_a_difference)
 
-    std_accuracy = (np.array(results['accuracy'])*100).std(axis=0)
+    mean_mu = np.array(results['mu_a']).mean(axis=0)
+    mean_std = np.array(results['std_a']).mean(axis=0)
     std_std = np.array(results['std_a']).std(axis=0)
 
-    mean_mu = np.array(results['mu_a']).mean(axis=0)
 
     # Store value for each condition
-    mean_final_acc.append(mean_accuracy[-1])
     mean_initial_std.append(mean_std[0])
     mean_final_std.append(mean_std[-1])
     mean_initial_mu.append(mean_mu[0])
     mean_final_mu.append(mean_mu[-1])
 
-    std_final_acc.append(std_accuracy[-1])
     std_initial_std.append(std_std[0])
     std_final_std.append(std_std[-1])
 
 # ----- Plot accuracy across DA reduction ----
-conditions = [1,2,3,4]
-condition_labels = ['x1','x10','x100','x1000']
+conditions = [1,2,3]#,4]
+condition_labels = ['healthy','x10','x100']#,'x1000']
 ax_2 = fig.add_subplot(gs[1,2])
 #ax_2.set_position(ax_2.get_position().translated(0, first_row_adjustment))
-ax_2.errorbar(conditions, mean_final_acc, yerr=std_final_acc, capsize=3, fmt="r--o", ecolor = "black",markersize=4,color='tab:orange',alpha=0.5)
+# DA only accuracy
+ax_2.errorbar(conditions, mean_final_acc, yerr=std_final_acc, capsize=3, fmt="r--o", ecolor = "black",markersize=4,color='tab:red',alpha=0.5,label='DA-driven')
+# CB-DA accuracy
+ax_2.errorbar(conditions, CB_contribution_mean_final_acc, yerr=CB_contribution_std_final_acc, capsize=3, fmt="r--o", ecolor = "black",markersize=4,color='tab:green',alpha=0.5, label="CB-DA")
 ax_2.spines['right'].set_visible(False)
 ax_2.spines['top'].set_visible(False)
 #ax_2.set_ylabel('Residual error [deg]')
 ax_2.set_xlabel('DA reduction')
 ax_2.set_ylabel('Accuracy')
-ax_2.set_title('DA deficits with discrete-feedback', fontsize=font_s)
+ax_2.set_title('DA deficits and discrete feedback', fontsize=font_s)
 ax_2.set_yticks([0,25,50,75,100])
-ax_2.set_xticks([1,2,3,4])
+ax_2.set_xticks([1,2,3])#,4])
 ax_2.set_xticklabels(condition_labels)
 ax_2.set_yticklabels(['0%','25%','50%','75%','100%'])
+ax_2.legend(loc='upper left', bbox_to_anchor=(0, 0.4), frameon=False,fontsize=font_s, ncol=1)
 #ax_2.xaxis.set_ticks_position('none') 
 
 # ----- Plot std reduction from start to end of learning across DA reduction ----
 
 mean_std_a_diff = np.array(std_difference).mean(axis=-1)
 std_std_a_diff = np.array(std_difference).std(axis=-1)
-conditions = [1,2,3,4]
-condition_labels = ['x1','x10','x100','x1000']
+conditions = [1,2,3]#,4]
+condition_labels = ['healthy','x10','x100']#,'x1000']
 ax_2 = fig.add_subplot(gs[1,3])
 #ax_2.set_position(ax_2.get_position().translated(0, first_row_adjustment))
 ax_2.errorbar(conditions, mean_std_a_diff, yerr=std_std_a_diff, capsize=3, fmt="r--o", ecolor = "black",markersize=4,color='tab:orange',alpha=0.5)
@@ -572,16 +602,16 @@ ax_2.spines['top'].set_visible(False)
 ax_2.set_xlabel('DA reduction')
 ax_2.set_ylabel('Uncertainty reduction')
 ax_2.set_title('DA deficits and action uncertainty', fontsize=font_s)
-#ax_2.set_yticks([0,25,50,75,100])
-ax_2.set_xticks([1,2,3,4])
+ax_2.set_yticks([0,25,50,75,100])
+ax_2.set_xticks([1,2,3])#,4])
 ax_2.set_xticklabels(condition_labels)
-#ax_2.set_yticklabels(['0%','25%','50%','75%','100%'])
+ax_2.set_yticklabels(['0%','25%','50%','75%','100%'])
 
 ## ----- Plot action distribtuion shift -----
 i=2
 e=2
 first_row_adjustment = -0.02
-colors = ['tab:red','tab:red','tab:green','tab:green']
+colors = ['tab:red','tab:red','tab:pink','tab:pink']
 for t in range(4):
     if t <2:
         ax = fig.add_subplot(gs[2,i])
@@ -641,6 +671,6 @@ for t in range(4):
 #plt.tight_layout()
 
 if save_file:
-    plt.savefig('/Users/px19783/Desktop/paper_plot_2.png', format='png', dpi=1400)
+    plt.savefig('/Users/px19783/Desktop/DA_CB_deficits.png', format='png', dpi=1400)
 else:
     plt.show()

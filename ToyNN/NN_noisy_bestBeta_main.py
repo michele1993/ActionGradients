@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from NN_CombinedAG import CombActionGradient
 
-''' Check what beta value gives best accuracy across different levels of noise, by training an agent from scratch'''
+''' Check what beta value gives best accuracy across different levels of sensory noise given a noise-free rwd, by training an agent from scratch'''
 
 seeds = [3009, 5467, 1092, 9372,2801]
 

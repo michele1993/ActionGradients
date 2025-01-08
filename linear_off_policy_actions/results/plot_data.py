@@ -9,6 +9,7 @@ direct = os.path.join(direct,'results')
 
 ## Load data with normal DA
 DA_reduction = 1
+save_file = True
 
 # RBL
 offline_RBL_data = np.load(f'Offline_RBL_DA_x{DA_reduction}_reduction_data.npy')
@@ -192,4 +193,6 @@ ax2[4].set_ylabel('Long-term accuracy')
 ax2[4].set_xticks([1,2,3])
 ax2[4].set_xticklabels(condition_labels)
 
-plt.show()
+#plt.show()
+if save_file:
+    plt.savefig('/Users/px19783/Desktop/offline_replay', format='png', dpi=1400)

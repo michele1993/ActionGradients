@@ -14,7 +14,7 @@ only getting a success/failure signal whenever they reach within a certain radiu
 """
 
 seeds = [8721, 5467, 1092, 9372,2801]
-save_file = True
+save_file = False
 
 tot_trials = 10000
 t_print = 100
@@ -28,7 +28,13 @@ fixd_a_noise = 0.02# set to experimental data value
 
 # Set update variables
 a_ln_rate = 0.0005
-beta = 0
+beta = 0.5
+model_ln_rate = 0.01
+
+if beta >0:
+    CB_label = f'CB_{beta}_contribution_'
+else:
+    CB_label=''
 
 # Initialise useful components
 CAG = CombActionGradient(actor=None, beta=beta)
@@ -45,6 +51,7 @@ for da in DA_reduction:
 
         ## Reinitialise all the models for each run with a different beta
         actor = Actor(ln_rate = a_ln_rate, trainable = True, opt_type='SGD')
+        estimated_model = Mot_model(ln_rate=model_ln_rate,lamb=None,Fixed=False)
 
         tot_accuracy = []
         tot_std = []
@@ -68,8 +75,13 @@ for da in DA_reduction:
             # Add noise to sensory obs
             y = true_y + torch.randn_like(true_y) * sensory_noise 
 
-            # Compute rwd signal
-            error = (y - y_star)**2 # it is actually a punishment
+            # Update the model
+            est_y = estimated_model.step(action.detach())
+            model_loss = estimated_model.update(y, est_y)
+
+            # Compute differentiable error signal
+            y.requires_grad_(True)
+            error = 0.1*(y - y_star)**2 # it is actually a punishment
 
             ## Give a rwd if reach is within target area
             if torch.sqrt(error) <= rwd_area:
@@ -81,22 +93,28 @@ for da in DA_reduction:
             rwd *= da
 
             # Update actor based on RBL action gradient only since binary feedback
-            RBL_grad =  CAG.computeRBLGrad(action, mu_a, std_a, rwd) 
+            RBL_grad =  -1*CAG.computeRBLGrad(action, mu_a, std_a, rwd) #NOTE: Need -1 since now rwd is a rwd we want to max and not an error/distance we want to min!!!
+
+            est_y = estimated_model.step(action)  # re-estimate values since model has been updated
+            EBL_grad =  CAG.computeEBLGrad(y, est_y, action, mu_a, std_a, error) 
+
+            action_gradient = beta * EBL_grad + (1-beta) * RBL_grad
+
             action_variables = torch.cat([mu_a, std_a],dim=-1)
 
 
-            #NOTE: Need -1 since now rwd is a rwd we want to max and not an error/distance we want to min!!!
-            actor.ActionGrad_update(-1*RBL_grad, action_variables)
+            actor.ActionGrad_update(action_gradient, action_variables)
 
             # Store variables 
             accuracy = np.sqrt(error.detach().item())
             if ep % t_print ==0:
                 accuracy = successes / t_print
                 tot_accuracy.append(accuracy)
+                print('DA reduction: ', da)
                 print("ep: ",ep)
                 print("accuracy: ",successes)
-                print("mu: ", mu_a)
-                print("std: ", std_a, '\n')
+                #print("mu: ", mu_a)
+                #print("std: ", std_a, '\n')
                 successes = 0
             
         seed_acc.append(tot_accuracy)
@@ -108,7 +126,7 @@ for da in DA_reduction:
         'mu_a': seed_mu_a,
         'std_a': seed_std_a
     }
-    label = "DA_decrease_"+str(i)+'.json'
+    label = CB_label+"DA_decrease_"+str(i)+'.json'
     i+=1
     root_dir = os.path.dirname(os.path.abspath(__file__))
     file_dir = os.path.join(root_dir,'results') # For the mixed model
